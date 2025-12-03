@@ -103,44 +103,110 @@ export interface EmailDetailResponse {
 }
 
 export const registerUser = async (data: RegisterData): Promise<RegisterResponse> => {
-    const response = await apiClient.post<RegisterResponse>('/user/register', data);
+    const response = await apiClient.post<RegisterResponse>('/api/auth/register', data);
     return response.data;
 };
 
 export const loginUser = async (data: LoginData): Promise<LoginResponse> => {
-    const response = await apiClient.post<LoginResponse>('/user/login', data);
+    const response = await apiClient.post<LoginResponse>('/api/auth/login', data);
     return response.data;
 };
 
 export const loginWithGoogle = async (credential: string): Promise<LoginResponse> => {
-    const response = await apiClient.post<LoginResponse>('/user/google', { credential });
+    const response = await apiClient.post<LoginResponse>('/api/auth/google', { credential });
     return response.data;
 };
 
 export const rotateTokens = async (refreshToken: string): Promise<RotateTokenResponse> => {
-    const response = await apiClient.post<RotateTokenResponse>('/user/refresh', { refreshToken });
+    const response = await apiClient.post<RotateTokenResponse>('/api/auth/refresh', { refreshToken });
     return response.data;
 };
 
 export const logoutUser = async (userId: string) => {
-    const response = await apiClient.post<{ status: 'success'; message: string }>('/user/logout', { userId });
+    const response = await apiClient.post<{ status: 'success'; message: string }>('/api/auth/logout', { userId });
     return response.data;
 };
 
 export const getMailboxes = async (): Promise<MailboxResponse> => {
-    const response = await apiClient.get<MailboxResponse>('/mailboxes');
+    const response = await apiClient.get<MailboxResponse>('/api/mailboxes');
     return response.data;
 };
 
 export const getMailboxEmails = async (mailboxId: string, page = 1, pageSize = 20): Promise<MailboxEmailsResponse> => {
-    const response = await apiClient.get<MailboxEmailsResponse>(`/mailboxes/${mailboxId}/emails`, {
-        params: { page, pageSize },
+    const safeId = encodeURIComponent(mailboxId);
+    const response = await apiClient.get<MailboxEmailsResponse>(`/api/mailboxes/${safeId}/emails`, {
+        params: { page, limit: pageSize },
     });
     return response.data;
 };
 
+
 export const getEmailDetail = async (emailId: string): Promise<EmailDetailResponse> => {
-    const response = await apiClient.get<EmailDetailResponse>(`/emails/${emailId}`);
+    const safeId = encodeURIComponent(emailId);
+    const response = await apiClient.get<EmailDetailResponse>(`/api/emails/${safeId}`);
+    return response.data;
+};
+
+export interface SendEmailData {
+    to: string[];
+    subject: string;
+    body: string;
+    cc?: string[];
+    bcc?: string[];
+}
+
+export interface SendEmailResponse {
+    status: 'success';
+    message: string;
+    messageId: string;
+}
+
+export const sendEmail = async (data: SendEmailData): Promise<SendEmailResponse> => {
+    const response = await apiClient.post<SendEmailResponse>('/api/emails/send', data);
+    return response.data;
+};
+
+export interface ReplyEmailData {
+    body: string;
+    replyAll?: boolean;
+}
+
+export interface ReplyEmailResponse {
+    status: 'success';
+    message: string;
+    messageId: string;
+}
+
+export const replyEmail = async (emailId: string, data: ReplyEmailData): Promise<ReplyEmailResponse> => {
+    const safeId = encodeURIComponent(emailId);
+    const response = await apiClient.post<ReplyEmailResponse>(`/api/emails/${safeId}/reply`, data);
+    return response.data;
+};
+
+export interface ModifyEmailData {
+    markRead?: boolean;
+    markUnread?: boolean;
+    star?: boolean;
+    unstar?: boolean;
+    delete?: boolean;
+}
+
+export interface ModifyEmailResponse {
+    status: 'success';
+    message: string;
+}
+
+export const modifyEmail = async (emailId: string, data: ModifyEmailData): Promise<ModifyEmailResponse> => {
+    const safeId = encodeURIComponent(emailId);
+    const response = await apiClient.post<ModifyEmailResponse>(`/api/emails/${safeId}/modify`, data);
+    return response.data;
+};
+
+export const getAttachment = async (emailId: string, attachmentId: string): Promise<Blob> => {
+    const response = await apiClient.get(`/api/attachments/${attachmentId}`, {
+        params: { emailId },
+        responseType: 'blob',
+    });
     return response.data;
 };
 
@@ -159,11 +225,11 @@ apiClient.interceptors.response.use(
         const originalRequest = error.config;
         const url: string = originalRequest?.url ?? '';
         const isAuthEndpoint =
-            url.includes('/user/refresh') ||
-            url.includes('/user/login') ||
-            url.includes('/user/logout') ||
-            url.includes('/user/register') ||
-            url.includes('/user/google');
+            url.includes('/api/auth/refresh') ||
+            url.includes('/api/auth/login') ||
+            url.includes('/api/auth/logout') ||
+            url.includes('/api/auth/register') ||
+            url.includes('/api/auth/google');
         if (error.response?.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
             originalRequest._retry = true;
             const storedRefresh = localStorage.getItem('refreshToken');

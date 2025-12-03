@@ -59,7 +59,7 @@ export default function Login() {
     });
 
     const googleMutation = useMutation({
-        mutationFn: (credential: string) => loginWithGoogle(credential),
+        mutationFn: loginWithGoogle,
         onSuccess: handleSuccess,
         onError: (err: any) => {
             const errorMessage = err.response?.data?.message || 'Google Sign-In failed. Please try again.';
@@ -67,15 +67,15 @@ export default function Login() {
         },
     });
 
+    const handleGoogleCredential = (credential: string) => {
+        setOauthError('');
+        googleMutation.mutate(credential);
+    };
     const onSubmit = (data: LoginFormData) => {
         setError('');
         passwordMutation.mutate(data);
     };
 
-    const handleGoogleCredential = (credential: string) => {
-        setOauthError('');
-        googleMutation.mutate(credential);
-    };
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 px-4">
