@@ -117,6 +117,16 @@ export const loginWithGoogle = async (credential: string): Promise<LoginResponse
     return response.data;
 };
 
+export const connectGmail = async (code: string) => {
+    const response = await apiClient.post("/api/auth/google/gmail-connect", { code });
+    return response.data;
+};
+
+export const loginFullWithGoogle = async (code: string) => {
+    const response = await apiClient.post("/api/auth/google/full-login", { code });
+    return response.data;
+}
+
 export const rotateTokens = async (refreshToken: string): Promise<RotateTokenResponse> => {
     const response = await apiClient.post<RotateTokenResponse>('/api/auth/refresh', { refreshToken });
     return response.data;
