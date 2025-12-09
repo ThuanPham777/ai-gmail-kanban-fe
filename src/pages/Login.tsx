@@ -4,16 +4,30 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { loginUser, loginWithGoogle } from '@/lib/api';
+import { loginUser, type LoginResponse } from '@/lib/api';
 import { setAccessToken, persistRefreshInfo } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardFooter,
+    CardHeader,
+    CardTitle,
+} from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Mail, Lock, AlertCircle, ShieldCheck, Home as HomeIcon } from 'lucide-react';
-import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton';
+import {
+    Loader2,
+    Mail,
+    Lock,
+    AlertCircle,
+    ShieldCheck,
+    Home as HomeIcon,
+} from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { GoogleSigninButton } from '@/components/auth/GoogleSignInButton';
 
 const passwordSchema = z
     .string()
@@ -42,7 +56,8 @@ export default function Login() {
         resolver: zodResolver(loginSchema),
     });
 
-    const handleSuccess = (data: Awaited<ReturnType<typeof loginUser>>) => {
+    // Dùng chung cho cả login password & login Google full
+    const handleSuccess = (data: LoginResponse) => {
         setAccessToken(data.accessToken);
         persistRefreshInfo(data.user, data.refreshToken);
         setUser(data.user);
@@ -53,43 +68,47 @@ export default function Login() {
         mutationFn: loginUser,
         onSuccess: handleSuccess,
         onError: (err: any) => {
-            const errorMessage = err.response?.data?.message || 'Login failed. Please try again.';
+            const errorMessage =
+                err.response?.data?.message || 'Login failed. Please try again.';
             setError(errorMessage);
         },
     });
 
-    const googleMutation = useMutation({
-        mutationFn: loginWithGoogle,
-        onSuccess: handleSuccess,
-        onError: (err: any) => {
-            const errorMessage = err.response?.data?.message || 'Google Sign-In failed. Please try again.';
-            setOauthError(errorMessage);
-        },
-    });
-
-    const handleGoogleCredential = (credential: string) => {
-        setOauthError('');
-        googleMutation.mutate(credential);
-    };
     const onSubmit = (data: LoginFormData) => {
         setError('');
         passwordMutation.mutate(data);
     };
 
+    const handleGoogleLoginSuccess = (data: LoginResponse) => {
+        setOauthError('');
+        handleSuccess(data);
+    };
+
+    const handleGoogleLoginError = (message: string) => {
+        setOauthError(message);
+    };
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 px-4">
             <Card className="w-full max-w-md">
                 <CardHeader className="space-y-1 text-center">
                     <div className="flex items-center justify-between mb-4">
-                        <Link to="/" className="text-muted-foreground hover:text-foreground transition-colors">
+                        <Link
+                            to="/"
+                            className="text-muted-foreground hover:text-foreground transition-colors"
+                        >
                             <HomeIcon className="h-5 w-5" />
                         </Link>
-                        <CardTitle className="text-3xl font-bold flex-1 text-center">Welcome Back</CardTitle>
+                        <CardTitle className="text-3xl font-bold flex-1 text-center">
+                            Welcome Back
+                        </CardTitle>
                         <div className="w-5" />
                     </div>
-                    <CardDescription>Authenticate with email + password or Google</CardDescription>
+                    <CardDescription>
+                        Authenticate with email + password or Google
+                    </CardDescription>
                 </CardHeader>
+
                 <CardContent className="space-y-6">
                     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                         {error && (
@@ -112,7 +131,11 @@ export default function Login() {
                                     {...register('email')}
                                 />
                             </div>
-                            {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
+                            {errors.email && (
+                                <p className="text-sm text-destructive">
+                                    {errors.email.message}
+                                </p>
+                            )}
                         </div>
 
                         <div className="space-y-2">
@@ -129,15 +152,22 @@ export default function Login() {
                                 />
                             </div>
                             {errors.password ? (
-                                <p className="text-sm text-destructive">{errors.password.message}</p>
+                                <p className="text-sm text-destructive">
+                                    {errors.password.message}
+                                </p>
                             ) : (
                                 <p className="text-xs text-muted-foreground">
-                                    Use at least 8 characters with one uppercase letter and one number.
+                                    Use at least 8 characters with one uppercase letter and one
+                                    number.
                                 </p>
                             )}
                         </div>
 
-                        <Button type="submit" className="w-full" disabled={passwordMutation.isPending}>
+                        <Button
+                            type="submit"
+                            className="w-full"
+                            disabled={passwordMutation.isPending}
+                        >
                             {passwordMutation.isPending ? (
                                 <>
                                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -154,7 +184,9 @@ export default function Login() {
                             <span className="w-full border-t" />
                         </div>
                         <div className="relative flex justify-center text-xs uppercase">
-                            <span className="bg-card px-2 text-muted-foreground">Or continue with</span>
+                            <span className="bg-card px-2 text-muted-foreground">
+                                Or continue with
+                            </span>
                         </div>
                     </div>
 
@@ -165,23 +197,28 @@ export default function Login() {
                         </Alert>
                     )}
 
-                    <GoogleSignInButton
-                        onCredential={handleGoogleCredential}
+                    <GoogleSigninButton
+                        onSuccess={handleGoogleLoginSuccess}
+                        // nếu muốn bắt lỗi từ nút này, mở rộng GoogleSigninButton nhận onError
                         disabled={passwordMutation.isPending}
-                        isLoading={googleMutation.isPending}
                     />
 
                     <div className="flex items-center gap-3 rounded-md bg-muted/40 p-3 text-left text-sm text-muted-foreground">
                         <ShieldCheck className="h-4 w-4 text-primary" />
                         <p>
-                            Access tokens stay in-memory and refresh tokens live in secure storage for safer sessions.
+                            Access tokens stay in-memory and refresh tokens live in secure
+                            storage for safer sessions.
                         </p>
                     </div>
                 </CardContent>
+
                 <CardFooter className="flex flex-col space-y-4">
                     <div className="text-sm text-center text-muted-foreground">
                         Don&apos;t have an account?{' '}
-                        <Link to="/signup" className="text-primary hover:underline font-medium">
+                        <Link
+                            to="/signup"
+                            className="text-primary hover:underline font-medium"
+                        >
                             Sign up
                         </Link>
                     </div>
