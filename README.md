@@ -30,6 +30,12 @@ VITE_API_BASE_URL=http://localhost:4000
 VITE_GOOGLE_CLIENT_ID=your-google-client-id.apps.googleusercontent.com
 ```
 
+How to run
+
+```bash
+npm run dev
+```
+
 > Use the exact same client ID as `GOOGLE_CLIENT_ID` on the backend. Add `http://localhost:5173` and your production origin to the OAuth client's “Authorized JavaScript origins”.
 
 ### Scripts
@@ -70,6 +76,11 @@ The inbox fetches from:
 - `POST /api/emails/:id/reply`
 - `POST /api/emails/:id/modify`
 - `GET /api/attachments/:id`
+
+| `GET /api/kanban/board`
+| `PATCH /api/kanban/items/:messageId/status`
+| `POST /api/kanban/items/:messageId/snooze`
+| `GET /api/kanban/items/:messageId/summarize`
 
 Responses include realistic sender names, previews, timestamps, HTML bodies, and attachment metadata so the UI feels like a live email client even without a real provider.
 
