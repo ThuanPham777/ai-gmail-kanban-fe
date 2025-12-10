@@ -4,7 +4,6 @@ import { AuthProvider, useAuth } from '@/context/AuthContext';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import SignUp from './pages/SignUp';
-import Inbox from './pages/Inbox';
 import { Loader2 } from 'lucide-react';
 import InboxPage from './pages/inbox/InboxPage';
 
