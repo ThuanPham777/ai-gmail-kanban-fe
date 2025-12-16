@@ -3,8 +3,9 @@ import { useQuery } from '@tanstack/react-query';
 import { getMailboxes } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
-import { searchKanban } from '@/lib/api/kanban.api';
+import { searchKanban, semanticSearchKanban } from '@/lib/api/kanban.api';
 import { SearchResults } from './components/SearchResults';
+import { SearchBarWithSuggestions } from './components/SearchBarWithSuggestions';
 import { MailboxSidebar } from './components/MailboxSidebar';
 import { ModeToggle, type InboxMode } from './components/mode-toggle';
 import { TraditionalInboxView } from './components/traditional/TraditionalInboxView';
@@ -19,13 +20,21 @@ export default function InboxPage() {
   const [searchResults, setSearchResults] = useState<any[] | null>(null);
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
+  const [searchType, setSearchType] = useState<'fuzzy' | 'semantic'>('fuzzy');
 
-  const doSearch = async () => {
-    if (!searchQuery || !searchQuery.trim()) return;
+  const doSearch = async (query?: string, isSemanticSearch = false) => {
+    const q = query || searchQuery;
+    if (!q || !q.trim()) return;
+
     setSearchLoading(true);
     setSearchError(null);
+    const type = isSemanticSearch ? 'semantic' : 'fuzzy';
+    setSearchType(type);
+
     try {
-      const resp = await searchKanban(searchQuery.trim());
+      const resp = isSemanticSearch
+        ? await semanticSearchKanban(q.trim())
+        : await searchKanban(q.trim());
       setSearchResults(resp.data ?? []);
     } catch (err: any) {
       setSearchError(err?.message ?? 'Search failed');
@@ -67,14 +76,11 @@ export default function InboxPage() {
           </div>
 
           <div className='flex-1 px-4'>
-            <input
+            <SearchBarWithSuggestions
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') doSearch();
-              }}
-              placeholder='Search emails...'
-              className='w-full rounded-md border bg-input/50 px-3 py-2 text-sm'
+              onChange={setSearchQuery}
+              onSearch={doSearch}
+              placeholder='Search emails... (Ctrl+Enter for AI search)'
             />
           </div>
 
@@ -102,22 +108,24 @@ export default function InboxPage() {
 
       <main className='flex-1'>
         <div className='p-4'>
-          {searchResults ? (
+          {searchResults !== null || searchLoading ? (
             <div className='rounded-xl border bg-card p-4'>
-              {searchLoading ? (
-                <p className='text-sm text-muted-foreground'>Searching…</p>
-              ) : searchError ? (
-                <p className='text-sm text-destructive'>{searchError}</p>
-              ) : (
-                <SearchResults
-                  items={searchResults}
-                  onView={(id) => {
-                    setMode('kanban');
-                    setSelectedMailbox('INBOX');
-                  }}
-                  onClear={() => setSearchResults(null)}
-                />
-              )}
+              <SearchResults
+                items={searchResults || []}
+                loading={searchLoading}
+                error={searchError}
+                searchType={searchType}
+                onView={(id) => {
+                  setSearchResults(null);
+                  setMode('kanban');
+                  setSelectedMailbox('INBOX');
+                }}
+                onClear={() => {
+                  setSearchResults(null);
+                  setSearchError(null);
+                  setSearchQuery('');
+                }}
+              />
             </div>
           ) : mode === 'traditional' ? (
             <div className='grid gap-4 lg:grid-cols-[22%_78%]'>

@@ -51,3 +51,28 @@ export const searchKanban = async (q: string) => {
   );
   return res.data;
 };
+
+export const semanticSearchKanban = async (query: string, limit?: number) => {
+  const res = await apiClient.post<{ status: 'success'; data: any[] }>(
+    `/api/kanban/search/semantic`,
+    { query, limit }
+  );
+  return res.data;
+};
+
+export const getSearchSuggestions = async (q: string, limit?: number) => {
+  const res = await apiClient.get<{
+    status: 'success';
+    data: Array<{ type: 'contact' | 'keyword'; text: string; value: string }>;
+  }>(`/api/kanban/search/suggestions`, { params: { q, limit } });
+  return res.data;
+};
+
+export const generateEmbedding = async (messageId: string) => {
+  const safeId = encodeURIComponent(messageId);
+  const res = await apiClient.post<{
+    status: 'success';
+    data: { success: boolean };
+  }>(`/api/kanban/items/${safeId}/generate-embedding`);
+  return res.data;
+};
