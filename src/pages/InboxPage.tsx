@@ -5,25 +5,50 @@ import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { searchKanban, semanticSearchKanban } from '@/lib/api/kanban.api';
-import { SearchResults } from './components/SearchResults';
-import { SearchBarWithSuggestions } from './components/SearchBarWithSuggestions';
-import { MailboxSidebar } from './components/MailboxSidebar';
-import { ModeToggle, type InboxMode } from './components/mode-toggle';
-import { TraditionalInboxView } from './components/traditional/TraditionalInboxView';
-import { KanbanInboxView } from './components/kanban/KanbanInboxView';
+import { SearchResults } from '../components/inbox/SearchResults';
+import { SearchBarWithSuggestions } from '../components/inbox/SearchBarWithSuggestions';
+import { MailboxSidebar } from '../components/inbox/MailboxSidebar';
+import { ModeToggle, type InboxMode } from '../components/inbox/mode-toggle';
+import { TraditionalInboxView } from '../components/inbox/traditional/TraditionalInboxView';
+import { KanbanInboxView } from '../components/inbox/kanban/KanbanInboxView';
 
+/**
+ * InboxPage - Main inbox container with dual view modes
+ *
+ * Features:
+ * - Toggle between Traditional (Outlook-style) and Kanban views
+ * - Mailbox sidebar with message counts
+ * - Header with search (traditional) or smart search (kanban)
+ * - User profile dropdown with logout
+ * - Auto-select first mailbox on load
+ * - Fuzzy and semantic search for kanban mode
+ *
+ * Architecture:
+ * - Traditional mode: 3-column layout (mailboxes, email list, email detail)
+ * - Kanban mode: Board with drag-drop columns (To Do, In Progress, Done)
+ */
 export default function InboxPage() {
   const { user, logout } = useAuth();
 
+  // View mode and mailbox selection
   const [mode, setMode] = useState<InboxMode>('traditional');
   const [selectedMailbox, setSelectedMailbox] = useState<string | null>(null);
+
+  // Search state (for kanban mode)
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<any[] | null>(null);
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [searchType, setSearchType] = useState<'fuzzy' | 'semantic'>('fuzzy');
+
+  // Email filtering (for traditional mode)
   const [emailSearchTerm, setEmailSearchTerm] = useState('');
 
+  /**
+   * Executes kanban search (fuzzy or semantic)
+   * @param query - Search query string
+   * @param isSemanticSearch - If true, uses AI semantic search; otherwise fuzzy search
+   */
   const doSearch = async (query?: string, isSemanticSearch = false) => {
     const q = query || searchQuery;
     if (!q || !q.trim()) return;
@@ -45,12 +70,16 @@ export default function InboxPage() {
     }
   };
 
+  // Fetch mailboxes (labels) from Gmail API
   const mailboxesQuery = useQuery({
     queryKey: ['mailboxes'],
     queryFn: getMailboxes,
   });
 
-  // auto select first mailbox for traditional
+  /**
+   * Auto-select first mailbox when entering traditional mode
+   * Ensures there's always a selected mailbox in traditional view
+   */
   useEffect(() => {
     if (mode === 'traditional') {
       if (!selectedMailbox && mailboxesQuery.data?.data.length) {
@@ -59,7 +88,10 @@ export default function InboxPage() {
     }
   }, [mailboxesQuery.data, selectedMailbox, mode]);
 
-  // when switching to kanban, force labelId = INBOX (không cần filter sidebar)
+  /**
+   * Force INBOX selection when switching to kanban mode
+   * Kanban only works with INBOX emails
+   */
   useEffect(() => {
     if (mode === 'kanban') {
       setSelectedMailbox('INBOX');

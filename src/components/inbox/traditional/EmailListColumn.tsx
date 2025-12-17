@@ -1,8 +1,17 @@
+/**
+ * EmailListColumn Component
+ *
+ * Displays a scrollable list of emails with:
+ * - Infinite scroll loading
+ * - Multi-select for bulk actions
+ * - Individual email actions (star/unstar)
+ * - Search highlighting
+ */
+
 import { useRef, useCallback } from 'react';
 import type { EmailListItem } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import {
-  RefreshCcw,
   CheckSquare,
   Trash2,
   Star,
@@ -11,6 +20,7 @@ import {
   Plus,
 } from 'lucide-react';
 import { MailIcon } from './MailIcon';
+import { SCROLL_LOAD_THRESHOLD } from '../../../constants/constants.email';
 
 export function EmailListColumn({
   emails,
@@ -22,7 +32,6 @@ export function EmailListColumn({
   onSelectEmail,
   onToggleSelect,
   onSelectAll,
-  onRefresh,
   onMarkRead,
   onMarkUnread,
   onDeleteSelected,
@@ -41,7 +50,6 @@ export function EmailListColumn({
   onSelectEmail: (id: string) => void;
   onToggleSelect: (id: string) => void;
   onSelectAll: () => void;
-  onRefresh: () => void;
   onMarkRead: () => void;
   onMarkUnread: () => void;
   onDeleteSelected: () => void;
@@ -53,12 +61,16 @@ export function EmailListColumn({
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Scroll event để detect khi gần đến cuối
+  /**
+   * Detect when user scrolls near bottom to trigger auto-load
+   * Triggers when within SCROLL_LOAD_THRESHOLD pixels of bottom
+   */
   const handleScroll = useCallback(() => {
     if (!scrollRef.current || !hasMore || isFetching) return;
 
     const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
-    const isNearBottom = scrollHeight - scrollTop - clientHeight < 200; // 200px từ đáy
+    const isNearBottom =
+      scrollHeight - scrollTop - clientHeight < SCROLL_LOAD_THRESHOLD;
 
     if (isNearBottom) {
       onLoadMore();
@@ -68,17 +80,7 @@ export function EmailListColumn({
   return (
     <div className='flex h-full flex-col rounded-xl border bg-card shadow-sm min-h-0 min-w-0 overflow-hidden'>
       <div className='border-b px-4 py-3 shrink-0'>
-        <div className='flex flex-wrap items-center gap-2'>
-          <Button
-            variant='outline'
-            size='sm'
-            className='gap-2'
-            onClick={onRefresh}
-          >
-            <RefreshCcw className='h-4 w-4' />
-            Refresh
-          </Button>
-
+        <div className='flex items-center gap-2'>
           {onCompose && (
             <Button
               variant='outline'

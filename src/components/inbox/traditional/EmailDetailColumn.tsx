@@ -14,6 +14,28 @@ import {
 } from 'lucide-react';
 import { MailIcon } from './MailIcon';
 
+/**
+ * EmailDetailColumn - Displays full email content with actions
+ *
+ * Features:
+ * - Email metadata (from, to, subject, date)
+ * - HTML body rendering with sanitization
+ * - Action buttons (reply, forward, star, archive)
+ * - Attachment download support
+ * - Inline reply/reply-all composer
+ * - "Open in Gmail" external link
+ *
+ * @param email - Full email details to display
+ * @param isLoading - Loading state for initial email fetch
+ * @param hasSelection - Whether an email is selected (shows placeholder if false)
+ * @param onBack - Mobile back button handler
+ * @param isMobile - Mobile layout flag
+ * @param onReply - Reply/reply-all handler
+ * @param onModify - Email action handler (star, archive, mark read)
+ * @param onDownloadAttachment - Attachment download handler
+ * @param isLoadingAction - Loading state for ongoing actions
+ * @param onForward - Forward button handler
+ */
 export function EmailDetailColumn({
   email,
   isLoading,
@@ -43,21 +65,31 @@ export function EmailDetailColumn({
   isLoadingAction?: boolean;
   onForward?: (email: EmailDetail) => void;
 }) {
+  // Reply composer state
   const [replyMode, setReplyMode] = useState<'reply' | 'replyAll' | null>(null);
   const [replyBody, setReplyBody] = useState('');
   const [submittingReply, setSubmittingReply] = useState(false);
 
+  /**
+   * Initiates reply mode (reply or reply-all)
+   */
   const startReply = (mode: 'reply' | 'replyAll') => {
     if (!onReply) return;
     setReplyMode(mode);
     setReplyBody('');
   };
 
+  /**
+   * Closes reply composer and clears draft
+   */
   const cancelReply = () => {
     setReplyMode(null);
     setReplyBody('');
   };
 
+  /**
+   * Sends the reply and closes composer on success
+   */
   const submitReply = async () => {
     if (!replyMode || !onReply || !replyBody.trim()) return;
     try {
@@ -69,12 +101,18 @@ export function EmailDetailColumn({
     }
   };
 
+  /**
+   * Toggles star status of current email
+   */
   const handleStarToggle = (currentlyStarred: boolean) => {
     if (onModify) {
       onModify(currentlyStarred ? { unstar: true } : { star: true });
     }
   };
 
+  /**
+   * Archives (deletes) the current email
+   */
   const handleArchive = () => {
     if (onModify) {
       onModify({ delete: true });

@@ -5,11 +5,24 @@ import type {
   KanbanEmailItem,
 } from './types/kanban.types';
 
+/**
+ * Fetches kanban board with all email columns
+ * Supports pagination using token-based pagination similar to Gmail
+ * @param label - Optional label filter
+ * @param pageToken - Token from previous response for next page
+ * @param pageSize - Number of emails per column per request (default: 20)
+ */
 export const getKanbanBoard = async (
-  label?: string
+  label?: string,
+  pageToken?: string,
+  pageSize = 20
 ): Promise<KanbanBoardResponse> => {
   const res = await apiClient.get<KanbanBoardResponse>('/api/kanban/board', {
-    params: label ? { label } : undefined,
+    params: {
+      ...(label ? { label } : {}),
+      ...(pageToken ? { pageToken } : {}),
+      limit: pageSize,
+    },
   });
   return res.data;
 };

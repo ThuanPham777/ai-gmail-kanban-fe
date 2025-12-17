@@ -1,6 +1,24 @@
 import { Button } from '@/components/ui/button';
 import type { Mailbox } from '@/lib/api';
 
+/**
+ * MailboxSidebar - Left sidebar showing mailboxes/labels with message counts
+ *
+ * Features:
+ * - Lists all mailboxes (INBOX, SENT, DRAFT, etc.) with unread counts
+ * - Highlights selected mailbox
+ * - Optional compose button
+ * - Loading skeleton state
+ * - Scrollable list for many mailboxes
+ *
+ * @param mailboxes - Array of mailbox objects (id, name, messagesTotal, messagesUnread)
+ * @param isLoading - Loading state while fetching mailboxes
+ * @param selectedId - Currently selected mailbox ID
+ * @param onSelect - Handler when mailbox is clicked
+ * @param onCompose - Handler for compose button click
+ * @param title - Sidebar header title (default: "Mailboxes")
+ * @param showCompose - Whether to show compose button (default: true)
+ */
 export function MailboxSidebar({
   mailboxes,
   isLoading,
