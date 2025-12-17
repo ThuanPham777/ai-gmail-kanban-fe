@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { getMailboxes } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { searchKanban, semanticSearchKanban } from '@/lib/api/kanban.api';
 import { SearchResults } from './components/SearchResults';
 import { SearchBarWithSuggestions } from './components/SearchBarWithSuggestions';
@@ -21,6 +22,7 @@ export default function InboxPage() {
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [searchType, setSearchType] = useState<'fuzzy' | 'semantic'>('fuzzy');
+  const [emailSearchTerm, setEmailSearchTerm] = useState('');
 
   const doSearch = async (query?: string, isSemanticSearch = false) => {
     const q = query || searchQuery;
@@ -65,8 +67,8 @@ export default function InboxPage() {
   }, [mode]);
 
   return (
-    <div className='min-h-screen flex flex-col bg-background text-foreground'>
-      <header className='border-b bg-card'>
+    <div className='h-screen flex flex-col bg-background text-foreground overflow-hidden'>
+      <header className='border-b bg-card shrink-0'>
         <div className='flex items-center justify-between gap-4 px-4 py-4'>
           <div>
             <p className='text-xs uppercase tracking-[0.3em] text-muted-foreground'>
@@ -76,12 +78,22 @@ export default function InboxPage() {
           </div>
 
           <div className='flex-1 px-4'>
-            <SearchBarWithSuggestions
-              value={searchQuery}
-              onChange={setSearchQuery}
-              onSearch={doSearch}
-              placeholder='Search emails... (Ctrl+Enter for AI search)'
-            />
+            {mode === 'traditional' ? (
+              <Input
+                type='search'
+                placeholder='Search emails...'
+                className='w-full'
+                value={emailSearchTerm}
+                onChange={(e) => setEmailSearchTerm(e.target.value)}
+              />
+            ) : (
+              <SearchBarWithSuggestions
+                value={searchQuery}
+                onChange={setSearchQuery}
+                onSearch={doSearch}
+                placeholder='Search emails... (Ctrl+Enter for AI search)'
+              />
+            )}
           </div>
 
           <div className='flex items-center gap-3'>
@@ -106,16 +118,16 @@ export default function InboxPage() {
         </div>
       </header>
 
-      <main className='flex-1'>
-        <div className='p-4'>
+      <main className='flex-1 overflow-hidden min-h-0'>
+        <div className='h-full p-4 flex flex-col min-h-0'>
           {searchResults !== null || searchLoading ? (
-            <div className='rounded-xl border bg-card p-4'>
+            <div className='rounded-xl border bg-card p-4 overflow-auto'>
               <SearchResults
                 items={searchResults || []}
                 loading={searchLoading}
                 error={searchError}
                 searchType={searchType}
-                onView={(id) => {
+                onView={() => {
                   setSearchResults(null);
                   setMode('kanban');
                   setSelectedMailbox('INBOX');
@@ -128,7 +140,7 @@ export default function InboxPage() {
               />
             </div>
           ) : mode === 'traditional' ? (
-            <div className='grid gap-4 lg:grid-cols-[22%_78%]'>
+            <div className='grid gap-4 lg:grid-cols-[18%_82%] h-full min-h-0'>
               <MailboxSidebar
                 mailboxes={mailboxesQuery.data?.data ?? []}
                 isLoading={mailboxesQuery.isLoading}
@@ -138,18 +150,21 @@ export default function InboxPage() {
                 showCompose={false}
               />
 
-              <div className='rounded-xl border bg-card p-4'>
+              <div className='rounded-xl border bg-card p-4 overflow-hidden'>
                 {!selectedMailbox ? (
                   <div className='text-sm text-muted-foreground'>
                     Select a mailbox…
                   </div>
                 ) : (
-                  <TraditionalInboxView mailboxId={selectedMailbox} />
+                  <TraditionalInboxView
+                    mailboxId={selectedMailbox}
+                    emailSearchTerm={emailSearchTerm}
+                  />
                 )}
               </div>
             </div>
           ) : (
-            <div className='rounded-xl border bg-card p-4'>
+            <div className='rounded-xl border bg-card p-4 overflow-auto'>
               <KanbanInboxView labelId={selectedMailbox ?? 'INBOX'} />
             </div>
           )}
