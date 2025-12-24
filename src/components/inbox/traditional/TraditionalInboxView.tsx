@@ -38,6 +38,8 @@ type ComposeDraft = {
   bcc: string;
   subject: string;
   body: string;
+  mode?: 'compose' | 'forward';
+  forwardEmailId?: string;
 };
 
 export function TraditionalInboxView({
@@ -104,16 +106,17 @@ export function TraditionalInboxView({
   /**
    * Email mutations (send, reply, modify) with optimistic updates
    */
-  const { sendMutation, replyMutation, modifyMutation } = useEmailMutations({
-    mailboxId,
-    onSuccess: (message) => {
-      showMessage(message);
-      if (message.includes('sent')) {
-        setComposeDraft(null);
-      }
-    },
-    onError: showMessage,
-  });
+  const { sendMutation, forwardMutation, replyMutation, modifyMutation } =
+    useEmailMutations({
+      mailboxId,
+      onSuccess: (message) => {
+        showMessage(message);
+        if (message.includes('sent') || message.includes('forwarded')) {
+          setComposeDraft(null);
+        }
+      },
+      onError: showMessage,
+    });
 
   /**
    * Handle bulk modification of multiple selected emails
@@ -146,6 +149,16 @@ export function TraditionalInboxView({
    */
   const openCompose = (initial?: Partial<ComposeDraft>) => {
     setComposeDraft(createDefaultComposeDraft(initial));
+  };
+
+  const openForward = (email: any) => {
+    // Keep body empty; backend will append the original message.
+    openCompose({
+      mode: 'forward',
+      forwardEmailId: email.id,
+      subject: email.subject ? `Fwd: ${email.subject}` : 'Fwd: (No subject)',
+      body: '',
+    });
   };
 
   /**
@@ -223,6 +236,7 @@ export function TraditionalInboxView({
             selectedEmailId ? handleDownloadAttachment : undefined
           }
           isLoadingAction={replyMutation.isPending || modifyMutation.isPending}
+          onForward={(email) => openForward(email)}
         />
       </div>
 
@@ -230,8 +244,20 @@ export function TraditionalInboxView({
         <ComposeModal
           draft={composeDraft}
           onClose={() => setComposeDraft(null)}
-          onSend={(payload: SendEmailData) => sendMutation.mutate(payload)}
-          isLoading={sendMutation.isPending}
+          onSend={(payload: SendEmailData) => {
+            if (
+              composeDraft.mode === 'forward' &&
+              composeDraft.forwardEmailId
+            ) {
+              forwardMutation.mutate({
+                emailId: composeDraft.forwardEmailId,
+                payload,
+              });
+              return;
+            }
+            sendMutation.mutate(payload);
+          }}
+          isLoading={sendMutation.isPending || forwardMutation.isPending}
         />
       )}
     </div>

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { EmailDetail } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import {
@@ -14,6 +14,34 @@ import {
 } from 'lucide-react';
 import { MailIcon } from './MailIcon';
 import { GMAIL_URL_PREFIX } from '@/constants/constants.email';
+
+function sanitizeEmailHtml(html: string) {
+  // Email bodies can contain <style> tags that leak into the whole app and
+  // unexpectedly change fonts/layout when selecting certain emails.
+  try {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+
+    // Strip tags that can affect global page styling or execute scripts
+    const forbidden = doc.querySelectorAll(
+      'script, style, link, meta, base, title'
+    );
+    forbidden.forEach((n) => n.remove());
+
+    // Remove inline event handlers (onload, onclick, ...)
+    doc.querySelectorAll('*').forEach((el) => {
+      for (const attr of Array.from(el.attributes)) {
+        if (/^on/i.test(attr.name)) {
+          el.removeAttribute(attr.name);
+        }
+      }
+    });
+
+    return doc.body.innerHTML;
+  } catch {
+    return html;
+  }
+}
 
 /**
  * EmailDetailColumn - Displays full email content with actions
@@ -70,6 +98,10 @@ export function EmailDetailColumn({
   const [replyMode, setReplyMode] = useState<'reply' | 'replyAll' | null>(null);
   const [replyBody, setReplyBody] = useState('');
   const [submittingReply, setSubmittingReply] = useState(false);
+
+  const safeBodyHtml = useMemo(() => {
+    return email?.body ? sanitizeEmailHtml(email.body) : '';
+  }, [email?.body]);
 
   /**
    * Initiates reply mode (reply or reply-all)
@@ -224,8 +256,8 @@ export function EmailDetailColumn({
               </Button>
             </div>
             <div
-              className='prose prose-sm max-w-none dark:prose-invert'
-              dangerouslySetInnerHTML={{ __html: email.body }}
+              className='prose prose-sm max-w-none dark:prose-invert font-sans text-foreground'
+              dangerouslySetInnerHTML={{ __html: safeBodyHtml }}
             />
             {email.attachments?.length ? (
               <div>

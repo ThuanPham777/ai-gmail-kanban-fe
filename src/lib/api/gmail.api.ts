@@ -111,6 +111,23 @@ export const replyEmail = async (
 };
 
 /**
+ * Forwards an existing email
+ * @param emailId - Original email id (mailboxId|messageId or raw messageId)
+ * @param data - Forward content (to, cc, bcc, subject, body)
+ */
+export const forwardEmail = async (
+  emailId: string,
+  data: SendEmailData
+): Promise<SendEmailResponse> => {
+  const safeId = encodeURIComponent(emailId);
+  const response = await apiClient.post<SendEmailResponse>(
+    `/api/emails/${safeId}/forward`,
+    data
+  );
+  return response.data;
+};
+
+/**
  * Modifies email labels and status
  * Can mark as read/unread, star/unstar, or delete (archive)
  * @param emailId - Email's message ID

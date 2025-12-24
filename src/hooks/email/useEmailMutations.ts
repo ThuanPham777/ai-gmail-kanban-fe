@@ -4,8 +4,8 @@
  */
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { sendEmail, replyEmail, modifyEmail } from '@/lib/api';
-import type { ModifyEmailData } from '@/lib/api';
+import { sendEmail, replyEmail, modifyEmail, forwardEmail } from '@/lib/api';
+import type { ModifyEmailData, SendEmailData } from '@/lib/api';
 
 interface UseEmailMutationsProps {
   mailboxId: string;
@@ -33,6 +33,29 @@ export function useEmailMutations({
     onError: (err: any) => {
       const errorMsg =
         err.response?.data?.message || err.message || 'Failed to send email';
+      onError?.(errorMsg);
+    },
+  });
+
+  /**
+   * Mutation for forwarding emails
+   * Invalidates email list after successful forward
+   */
+  const forwardMutation = useMutation({
+    mutationFn: ({
+      emailId,
+      payload,
+    }: {
+      emailId: string;
+      payload: SendEmailData;
+    }) => forwardEmail(emailId, payload),
+    onSuccess: () => {
+      onSuccess?.('Email forwarded successfully');
+      qc.invalidateQueries({ queryKey: ['emails-infinite', mailboxId] });
+    },
+    onError: (err: any) => {
+      const errorMsg =
+        err.response?.data?.message || err.message || 'Failed to forward email';
       onError?.(errorMsg);
     },
   });
@@ -170,6 +193,7 @@ export function useEmailMutations({
 
   return {
     sendMutation,
+    forwardMutation,
     replyMutation,
     modifyMutation,
   };
