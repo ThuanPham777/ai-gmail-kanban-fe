@@ -40,6 +40,10 @@ export function KanbanInboxView({ labelId }: { labelId?: string }) {
   const [msg, setMsg] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
+  // Track snoozed items so we can notify when they reappear
+  const snoozedIdsRef = useRef<Set<string>>(new Set());
+  const [snoozedCount, setSnoozedCount] = useState(0);
+
   // Dynamic column configuration from backend
   const {
     columns: localColumns,
@@ -97,6 +101,8 @@ export function KanbanInboxView({ labelId }: { labelId?: string }) {
       lastPage.data.meta?.nextPageToken ?? undefined,
     initialPageParam: undefined as string | undefined,
     enabled: !configLoading, // Wait for config to load first
+    // Only poll while we have pending snoozed emails to detect wake-ups.
+    refetchInterval: snoozedCount > 0 ? 30_000 : false,
   });
 
   // Get columns from API response (first page) or fallback to local
@@ -161,6 +167,10 @@ export function KanbanInboxView({ labelId }: { labelId?: string }) {
       statuses,
       onSuccess: show,
       onError: show,
+      onSnoozed: (messageId) => {
+        snoozedIdsRef.current.add(messageId);
+        setSnoozedCount(snoozedIdsRef.current.size);
+      },
       onLoadingChange: (messageId, isLoading) => {
         setLoadingMap((m) => ({ ...m, [messageId]: isLoading }));
       },
@@ -168,6 +178,34 @@ export function KanbanInboxView({ labelId }: { labelId?: string }) {
         setSummarizingMap((m) => ({ ...m, [messageId]: isSummarizing }));
       },
     });
+
+  // Notify when a previously snoozed email appears back on the board
+  useEffect(() => {
+    if (!board || snoozedIdsRef.current.size === 0) return;
+
+    const presentIds = new Set<string>();
+    for (const status of statuses) {
+      const items = board[status] ?? [];
+      for (const it of items) {
+        if (it?.messageId) presentIds.add(it.messageId);
+      }
+    }
+
+    let woke = 0;
+    for (const id of Array.from(snoozedIdsRef.current)) {
+      if (presentIds.has(id)) {
+        snoozedIdsRef.current.delete(id);
+        woke += 1;
+      }
+    }
+
+    if (woke > 0) {
+      show(
+        woke === 1 ? 'Snoozed email is back' : `${woke} snoozed emails are back`
+      );
+      setSnoozedCount(snoozedIdsRef.current.size);
+    }
+  }, [board, statuses]);
 
   /**
    * Handles moving a card to a different column

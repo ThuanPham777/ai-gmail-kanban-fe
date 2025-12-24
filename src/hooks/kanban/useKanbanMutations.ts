@@ -20,6 +20,7 @@ interface UseKanbanMutationsProps {
   statuses: EmailStatus[];
   onSuccess?: (message: string) => void;
   onError?: (message: string) => void;
+  onSnoozed?: (messageId: string) => void;
   onLoadingChange?: (messageId: string, isLoading: boolean) => void;
   onSummarizingChange?: (messageId: string, isSummarizing: boolean) => void;
 }
@@ -79,6 +80,22 @@ function patchBoardSummary(
 }
 
 /**
+ * Optimistically removes an item from the board (used for snooze)
+ */
+function patchBoardRemove(
+  board: KanbanBoardData,
+  messageId: string,
+  statuses: EmailStatus[]
+): KanbanBoardData {
+  const next: any = { ...board };
+  for (const st of statuses) {
+    const arr: KanbanEmailItem[] = next[st] ?? [];
+    next[st] = arr.filter((i) => i.messageId !== messageId);
+  }
+  return next;
+}
+
+/**
  * Hook for managing kanban board mutations
  * @param queryKey - React Query cache key for the board
  * @param statuses - Array of valid status values
@@ -92,6 +109,7 @@ export function useKanbanMutations({
   statuses,
   onSuccess,
   onError,
+  onSnoozed,
   onLoadingChange,
   onSummarizingChange,
 }: UseKanbanMutationsProps) {
@@ -171,15 +189,42 @@ export function useKanbanMutations({
     mutationFn: ({ messageId, until }: { messageId: string; until: string }) =>
       snoozeKanbanItem(messageId, until),
 
-    onMutate: ({ messageId }) => {
+    onMutate: async ({ messageId }) => {
       onLoadingChange?.(messageId, true);
+
+      await queryClient.cancelQueries({ queryKey });
+      const prev = queryClient.getQueryData<any>(queryKey);
+
+      // Optimistically remove from board immediately
+      if (prev?.pages) {
+        const updatedPages = prev.pages.map((page: any) => {
+          if (page.data?.data) {
+            const optimisticData = patchBoardRemove(
+              page.data.data,
+              messageId,
+              statuses
+            );
+            return { ...page, data: { ...page.data, data: optimisticData } };
+          }
+          return page;
+        });
+        queryClient.setQueryData(queryKey, { ...prev, pages: updatedPages });
+      }
+
+      return { prev, messageId };
     },
 
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
+      if (variables?.messageId) {
+        onSnoozed?.(variables.messageId);
+      }
       onSuccess?.('Email snoozed');
     },
 
-    onError: () => {
+    onError: (_err, _vars, context) => {
+      if (context?.prev) {
+        queryClient.setQueryData(queryKey, context.prev);
+      }
       onError?.('Failed to snooze email');
     },
 
