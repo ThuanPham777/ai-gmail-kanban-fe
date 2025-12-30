@@ -24,6 +24,8 @@ import {
   setAccessToken,
   setStoredUser,
   touchRefreshWatcher,
+  setupAuthBroadcastListener,
+  type AuthBroadcastMessage,
 } from '@/lib/auth';
 import type { StoredUser } from '@/lib/auth';
 import { logoutUser, rotateTokens } from '@/lib/api';
@@ -68,7 +70,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   /**
    * Initialize auth watchers and attempt token refresh on mount
-   * Also sets up cross-tab storage event listeners
+   * Also sets up cross-tab storage event listeners and BroadcastChannel
    */
   useEffect(() => {
     let mounted = true;
@@ -100,7 +102,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     attemptRefresh();
 
     /**
-     * Handles storage events from other tabs
+     * Handles storage events from other tabs (fallback)
      * Syncs auth state across browser tabs
      */
     const handleStorage = (event: StorageEvent) => {
@@ -113,12 +115,33 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
     };
 
+    /**
+     * Handles BroadcastChannel messages from other tabs (primary sync method)
+     * Provides instant cross-tab logout/login sync
+     */
+    const handleAuthBroadcast = (message: AuthBroadcastMessage) => {
+      if (message.type === 'logout') {
+        // Another tab logged out - clear local state immediately
+        clearAllAuth();
+        setUserState(null);
+        queryClient.clear();
+      } else if (message.type === 'login') {
+        // Another tab logged in - sync user state
+        setUserState(message.user);
+        touchRefreshWatcher();
+      }
+    };
+
     window.addEventListener('storage', handleStorage);
+    const unsubscribeBroadcast =
+      setupAuthBroadcastListener(handleAuthBroadcast);
+
     return () => {
       mounted = false;
       window.removeEventListener('storage', handleStorage);
+      unsubscribeBroadcast();
     };
-  }, [syncUserFromStorage]);
+  }, [syncUserFromStorage, queryClient]);
 
   /**
    * Updates user state in memory and localStorage
