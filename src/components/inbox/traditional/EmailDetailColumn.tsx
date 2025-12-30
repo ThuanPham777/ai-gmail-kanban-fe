@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { EmailDetail } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import {
@@ -17,16 +17,15 @@ import { getGmailUrl } from '@/utils/emailUtils';
 import { useAuth } from '@/context/AuthContext';
 
 function sanitizeEmailHtml(html: string) {
-  // Email bodies can contain <style> tags that leak into the whole app and
-  // unexpectedly change fonts/layout when selecting certain emails.
+  // Email bodies often rely on <style> tags for layout (like Gmail).
+  // Rendering directly in the app can leak CSS and break the UI.
+  // We keep a light sanitizer and render the result in an isolated iframe.
   try {
     const parser = new DOMParser();
     const doc = parser.parseFromString(html, 'text/html');
 
-    // Strip tags that can affect global page styling or execute scripts
-    const forbidden = doc.querySelectorAll(
-      'script, style, link, meta, base, title'
-    );
+    // Strip risky tags (keep <style> for email layout)
+    const forbidden = doc.querySelectorAll('script, meta, base, title');
     forbidden.forEach((n) => n.remove());
 
     // Remove inline event handlers (onload, onclick, ...)
@@ -38,9 +37,66 @@ function sanitizeEmailHtml(html: string) {
       }
     });
 
-    return doc.body.innerHTML;
+    // Normalize links and images
+    doc.querySelectorAll('a').forEach((a) => {
+      const href = a.getAttribute('href') || '';
+      if (/^\s*javascript:/i.test(href)) {
+        a.removeAttribute('href');
+      }
+      a.setAttribute('target', '_blank');
+      a.setAttribute('rel', 'noopener noreferrer');
+    });
+
+    doc.querySelectorAll('img').forEach((img) => {
+      // Add max-width to prevent images from overflowing
+      if (!img.style.maxWidth) {
+        img.style.maxWidth = '100%';
+      }
+      if (!img.style.height || img.style.height === 'auto') {
+        img.style.height = 'auto';
+      }
+      // Add loading="lazy" for better performance
+      img.setAttribute('loading', 'lazy');
+
+      const src = img.getAttribute('src') || '';
+      if (/^\s*javascript:/i.test(src)) {
+        img.removeAttribute('src');
+      }
+
+      // Make images clickable to open in new tab
+      if (!img.parentElement || img.parentElement.tagName !== 'A') {
+        const link = doc.createElement('a');
+        link.href = img.src;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        img.parentNode?.replaceChild(link, img);
+        link.appendChild(img);
+      }
+    });
+
+    const safeDefaults = `
+      <style>
+        html, body { margin: 0; padding: 0; height: auto !important; min-height: 0 !important; }
+        body {
+          max-width: 100%;
+          overflow-x: hidden;
+          overflow-wrap: anywhere;
+          word-break: break-word;
+        }
+        img, video { max-width: 100% !important; height: auto !important; }
+        table { max-width: 100% !important; width: 100% !important; table-layout: fixed; }
+        td, th { max-width: 100%; word-break: break-word; overflow-wrap: anywhere; }
+        pre, code { white-space: pre-wrap !important; word-break: break-word; overflow-wrap: anywhere; }
+        * { box-sizing: border-box; }
+      </style>
+    `;
+
+    // Build srcDoc HTML (preserve email <style> in <head>)
+    const head = doc.head?.innerHTML || '';
+    const body = doc.body?.innerHTML || '';
+    return `<!doctype html><html><head>${safeDefaults}${head}</head><body>${body}</body></html>`;
   } catch {
-    return html;
+    return `<!doctype html><html><head></head><body>${html}</body></html>`;
   }
 }
 
@@ -96,6 +152,8 @@ export function EmailDetailColumn({
   onForward?: (email: EmailDetail) => void;
 }) {
   const { user } = useAuth();
+  const iframeRef = useRef<HTMLIFrameElement | null>(null);
+  const [iframeHeight, setIframeHeight] = useState<number>(420);
   // Reply composer state
   const [replyMode, setReplyMode] = useState<'reply' | 'replyAll' | null>(null);
   const [replyBody, setReplyBody] = useState('');
@@ -104,6 +162,83 @@ export function EmailDetailColumn({
   const safeBodyHtml = useMemo(() => {
     return email?.body ? sanitizeEmailHtml(email.body) : '';
   }, [email?.body]);
+
+  useEffect(() => {
+    // Auto-size the iframe so that scrolling happens in the outer column only.
+    // This reads the iframe document height (same-origin via srcDoc).
+    const iframe = iframeRef.current;
+    if (!iframe || !safeBodyHtml) return;
+
+    let resizeObserver: ResizeObserver | null = null;
+    let mutationObserver: MutationObserver | null = null;
+    let cancelled = false;
+
+    const measure = () => {
+      if (cancelled) return;
+      const doc = iframe.contentDocument;
+      const body = doc?.body;
+      if (!body) return;
+
+      const rectHeight = Math.ceil(body.getBoundingClientRect().height);
+      const scrollHeight = Math.ceil(body.scrollHeight);
+      const offsetHeight = Math.ceil(body.offsetHeight);
+
+      // Prefer body metrics (some templates set html/min-height causing huge extra space)
+      let next = Math.max(rectHeight, scrollHeight, offsetHeight);
+
+      // Clamp obvious overestimates (prevents blank scroll space)
+      if (rectHeight > 0 && next > rectHeight + 800) {
+        next = rectHeight;
+      }
+
+      if (Number.isFinite(next) && next > 0) setIframeHeight(next);
+    };
+
+    const onLoad = () => {
+      measure();
+
+      const doc = iframe.contentDocument;
+      const body = doc?.body;
+      if (!doc || !body) return;
+
+      // Re-measure when images load (common source of late height changes)
+      const images = Array.from(doc.images || []);
+      for (const img of images) {
+        img.addEventListener('load', measure);
+        img.addEventListener('error', measure);
+      }
+
+      // Observe DOM changes inside email content
+      mutationObserver = new MutationObserver(() => measure());
+      mutationObserver.observe(body, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+      });
+
+      // Observe layout changes (best-effort; may not exist in older browsers)
+      if (typeof ResizeObserver !== 'undefined') {
+        resizeObserver = new ResizeObserver(() => measure());
+        resizeObserver.observe(body);
+      }
+
+      // A couple of delayed measures to catch late layout shifts
+      window.setTimeout(measure, 50);
+      window.setTimeout(measure, 250);
+      window.setTimeout(measure, 750);
+    };
+
+    iframe.addEventListener('load', onLoad);
+    // If already loaded, try measuring immediately
+    window.setTimeout(measure, 0);
+
+    return () => {
+      cancelled = true;
+      iframe.removeEventListener('load', onLoad);
+      mutationObserver?.disconnect();
+      resizeObserver?.disconnect();
+    };
+  }, [safeBodyHtml]);
 
   /**
    * Initiates reply mode (reply or reply-all)
@@ -257,9 +392,14 @@ export function EmailDetailColumn({
                 <ExternalLink className='h-4 w-4' /> Open in Gmail
               </Button>
             </div>
-            <div
-              className='prose prose-sm max-w-none dark:prose-invert font-sans text-foreground'
-              dangerouslySetInnerHTML={{ __html: safeBodyHtml }}
+            <iframe
+              title='Email content'
+              ref={iframeRef}
+              className='w-full rounded-md border bg-background'
+              style={{ height: iframeHeight }}
+              scrolling='no'
+              sandbox='allow-same-origin allow-popups'
+              srcDoc={safeBodyHtml}
             />
             {email.attachments?.length ? (
               <div>
