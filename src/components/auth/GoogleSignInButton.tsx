@@ -49,7 +49,7 @@ function loadGsiScript(): Promise<void> {
       existing.addEventListener('load', () => resolve(), { once: true });
       existing.addEventListener(
         'error',
-        () => reject(new Error('Failed to load GSI script')),
+        () => reject(new Error('Failed to load GSI scripts')),
         {
           once: true,
         }
