@@ -126,6 +126,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         // Another tab logged out - clear local state WITHOUT broadcasting back
         // Using clearLocalAuth prevents ping-pong broadcast loop
         clearLocalAuth();
+        localStorage.removeItem('inboxViewMode');
         setUserState(null);
         queryClient.clear();
       } else if (message.type === 'login') {
@@ -173,6 +174,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       // Ignore API errors during logout to avoid trapping user
     } finally {
       clearAllAuth();
+      localStorage.removeItem('inboxViewMode');
       setUserState(null);
       setStoredUser(null);
       queryClient.clear();
