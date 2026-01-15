@@ -17,9 +17,9 @@ import {
   Paperclip,
   ExternalLink,
 } from 'lucide-react';
-import { MailIcon } from './MailIcon';
 import { getGmailUrl } from '@/utils/emailUtils';
 import { useAuth } from '@/context/AuthContext';
+import { MailIcon } from './MailIcon';
 
 function sanitizeEmailHtml(html: string) {
   // Email bodies often rely on <style> tags for layout (like Gmail).

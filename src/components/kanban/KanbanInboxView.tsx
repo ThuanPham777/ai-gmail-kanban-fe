@@ -12,11 +12,11 @@
  */
 
 import { useRef, useState, useEffect, useMemo } from 'react';
-import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery } from '@tanstack/react-query';
 import { getKanbanBoard, type KanbanBoardData } from '@/lib/api';
 import { KanbanBoard } from './KanbanBoard';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, RefreshCcw, Settings, AlertCircle } from 'lucide-react';
+import { Loader2, Settings, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { KanbanSettingsModal } from './KanbanSettingsModal';
 import { useKanbanConfig } from '@/hooks/kanban/useKanbanConfig';
@@ -25,10 +25,10 @@ import {
   MAX_AUTO_SUMMARIZE_ITEMS,
   MESSAGE_DISPLAY_DURATION,
   type EmailStatus,
-} from '../../../constants/constants.kanban';
-import { useKanbanMutations } from '../../../hooks/kanban/useKanbanMutations';
-import { useKanbanFilters } from '../../../hooks/kanban/useKanbanFilters';
-import { needsSummary } from '../../../utils/kanbanUtils';
+} from '../../constants/constants.kanban';
+import { useKanbanMutations } from '../../hooks/kanban/useKanbanMutations';
+import { useKanbanFilters } from '../../hooks/kanban/useKanbanFilters';
+import { needsSummary } from '../../utils/kanbanUtils';
 import { getGmailUrl } from '@/utils/emailUtils';
 import { useAuth } from '@/context/AuthContext';
 
@@ -38,7 +38,6 @@ import { useAuth } from '@/context/AuthContext';
  */
 export function KanbanInboxView({ labelId }: { labelId?: string }) {
   const { user } = useAuth();
-  const queryClient = useQueryClient();
   const [msg, setMsg] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
@@ -352,9 +351,6 @@ export function KanbanInboxView({ labelId }: { labelId?: string }) {
 
       <div className='flex items-center justify-between'>
         <div>
-          <p className='text-xs uppercase tracking-[0.3em] text-muted-foreground'>
-            Kanban mode
-          </p>
           <h2 className='text-lg font-semibold'>Email task board</h2>
         </div>
 
@@ -410,16 +406,6 @@ export function KanbanInboxView({ labelId }: { labelId?: string }) {
           >
             <Settings className='h-4 w-4' />
             Settings
-          </Button>
-
-          <Button
-            size='sm'
-            variant='outline'
-            onClick={() => queryClient.invalidateQueries({ queryKey })}
-            className='gap-2'
-          >
-            <RefreshCcw className='h-4 w-4' />
-            Refresh
           </Button>
         </div>
       </div>
