@@ -250,6 +250,33 @@ export function EmailDetailColumn({
   /**
    * Initiates reply mode (reply or reply-all)
    */
+  const startReply = (mode: 'reply' | 'replyAll') => {
+    if (!onReply) return;
+    setReplyMode(mode);
+    setReplyBody('');
+  };
+
+  /**
+   * Closes reply composer and clears draft
+   */
+  const cancelReply = () => {
+    setReplyMode(null);
+    setReplyBody('');
+  };
+
+  /**
+   * Sends the reply and closes composer on success
+   */
+  const submitReply = async () => {
+    if (!replyMode || !onReply || !replyBody.trim()) return;
+    try {
+      setSubmittingReply(true);
+      await onReply(replyBody, replyMode === 'replyAll');
+      cancelReply();
+    } finally {
+      setSubmittingReply(false);
+    }
+  };
 
   /**
    * Toggles star status of current email
