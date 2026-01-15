@@ -1,14 +1,21 @@
 /**
  * Cached Gmail API Client with Stale-While-Revalidate Pattern
  *
- * Wraps the base Gmail API with caching logic:
- * 1. Return cached data immediately if available
- * 2. Fetch fresh data from server in background
- * 3. Update cache and notify when fresh data arrives
+ * FLOW:
+ * 1. User opens Inbox
+ * 2. Load emails from IndexedDB → Show UI immediately
+ * 3. Call API (Gmail/Backend) in background
+ * 4. Has new mail?
+ *    - No → done
+ *    - Yes → update UI + IndexedDB
  *
- * Usage with React Query:
- * - placeholderData: cached data (instant display)
- * - data: fresh data (replaces placeholder when ready)
+ * With Gmail Push integration:
+ * Load cache → show UI → revalidate → Gmail push → backend sync → UI + cache update
+ *
+ * NOTE: Background revalidation updates cache silently.
+ * UI updates happen via:
+ * - React Query staleTime/refetchInterval
+ * - Gmail Push notifications (force invalidate)
  */
 
 import * as baseApi from './gmail.api';
@@ -37,35 +44,45 @@ import {
 
 /**
  * Cached version of getMailboxes
- * Returns cached data if available, then fetches fresh data
+ * TRUE Stale-While-Revalidate:
+ * 1. Return cached data IMMEDIATELY if available
+ * 2. Fetch fresh data in BACKGROUND (updates cache silently)
+ * 3. Next query will get fresh data from cache
  */
 export const getMailboxesCached = async (): Promise<MailboxResponse> => {
   // Try cache first
   const cached = await getCachedMailboxes();
 
-  // Start fresh fetch (don't await, let it run in background)
-  const fetchPromise = baseApi.getMailboxes().then(async (response) => {
-    // Cache the fresh data
-    await cacheMailboxes(response.data.mailboxes);
-    return response;
-  });
-
-  // If we have cached data, return it immediately
+  // If we have cached data, return it immediately and update cache in background
   if (cached) {
-    // Don't wait for fresh data, let the query update itself
+    // Background fetch - just update cache, don't trigger re-render
+    baseApi
+      .getMailboxes()
+      .then(async (response) => {
+        await cacheMailboxes(response.data.mailboxes);
+      })
+      .catch((err) => {
+        console.warn('Background mailbox fetch failed:', err.message);
+      });
+
     return {
       status: 'success',
       data: { mailboxes: cached.data },
     };
   }
 
-  // No cache, wait for fresh data
-  return fetchPromise;
+  // No cache, must wait for fresh data
+  const response = await baseApi.getMailboxes();
+  await cacheMailboxes(response.data.mailboxes);
+  return response;
 };
 
 /**
  * Cached version of getMailboxEmailsInfinite
- * Implements stale-while-revalidate for email lists
+ * TRUE Stale-While-Revalidate for email lists:
+ * 1. Return cached data IMMEDIATELY
+ * 2. Fetch fresh data in BACKGROUND (updates cache silently)
+ * 3. Next query will get fresh data from cache
  */
 export const getMailboxEmailsInfiniteCached = async (
   mailboxId: string,
@@ -74,15 +91,26 @@ export const getMailboxEmailsInfiniteCached = async (
 ): Promise<MailboxEmailsResponse> => {
   // Try cache first
   const cached = await getCachedEmailList(mailboxId, pageToken);
-
-  // IMPORTANT:
-  // - Cache must be keyed by the *current* pageToken (the request cursor), not nextPageToken.
-  // - For non-first pages, returning cached data can cause UI to "repeat" the first page
-  //   if old/bad cache entries exist. So we prefer fetching fresh for pageToken != undefined.
   const isFirstPage = pageToken == null;
 
-  // If cached first page is fresh, it is safe to use it directly.
-  if (isFirstPage && cached?.isFresh) {
+  // For first page with cache: return immediately, update cache in background
+  if (isFirstPage && cached) {
+    // Background fetch - just update cache silently
+    baseApi
+      .getMailboxEmailsInfinite(mailboxId, pageToken, pageSize)
+      .then(async (response) => {
+        await cacheEmailList(
+          mailboxId,
+          pageToken ?? null,
+          response.data.data,
+          response.data.meta
+        );
+      })
+      .catch((err) => {
+        console.warn('Background email fetch failed:', err.message);
+      });
+
+    // Return cached data immediately
     return {
       status: 'success',
       data: {
@@ -92,6 +120,7 @@ export const getMailboxEmailsInfiniteCached = async (
     };
   }
 
+  // For subsequent pages or no cache: fetch directly
   try {
     const response = await baseApi.getMailboxEmailsInfinite(
       mailboxId,
@@ -124,7 +153,10 @@ export const getMailboxEmailsInfiniteCached = async (
 
 /**
  * Cached version of getEmailDetail
- * Implements stale-while-revalidate for individual emails
+ * TRUE Stale-While-Revalidate for individual emails:
+ * 1. Return cached data IMMEDIATELY
+ * 2. Fetch fresh data in BACKGROUND (updates cache silently)
+ * 3. Next query will get fresh data from cache
  */
 export const getEmailDetailCached = async (
   emailId: string
@@ -132,25 +164,29 @@ export const getEmailDetailCached = async (
   // Try cache first
   const cached = await getCachedEmail(emailId);
 
-  // Start fresh fetch in background
-  const fetchPromise = baseApi
-    .getEmailDetail(emailId)
-    .then(async (response) => {
-      // Cache the fresh data
-      await cacheEmail(emailId, response.data);
-      return response;
-    });
-
-  // If we have cached data, return it immediately
+  // If we have cached data, return it immediately and update cache in background
   if (cached) {
+    // Background fetch - just update cache silently
+    baseApi
+      .getEmailDetail(emailId)
+      .then(async (response) => {
+        await cacheEmail(emailId, response.data);
+      })
+      .catch((err) => {
+        console.warn('Background email detail fetch failed:', err.message);
+      });
+
+    // Return cached data immediately
     return {
       status: 'success',
       data: cached.data,
     };
   }
 
-  // No cache, wait for fresh data
-  return fetchPromise;
+  // No cache, must wait for fresh data
+  const response = await baseApi.getEmailDetail(emailId);
+  await cacheEmail(emailId, response.data);
+  return response;
 };
 
 /**
