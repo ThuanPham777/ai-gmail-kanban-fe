@@ -25,8 +25,8 @@ import {
   Loader2,
   Plus,
 } from 'lucide-react';
+import { SCROLL_LOAD_THRESHOLD } from '../../constants/constants.email';
 import { MailIcon } from './MailIcon';
-import { SCROLL_LOAD_THRESHOLD } from '../../../constants/constants.email';
 
 export function EmailListColumn({
   emails,

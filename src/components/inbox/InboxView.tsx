@@ -22,15 +22,15 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { EmailListColumn } from './EmailListColumn';
 import { EmailDetailColumn } from './EmailDetailColumn';
 import { ComposeModal } from './ComposeModal';
-import { CacheStatusIndicator } from '../CacheStatusIndicator';
-import { useEmailMutations } from '../../../hooks/email/useEmailMutations';
-import { useEmailSelection } from '../../../hooks/email/useEmailSelection';
+import { CacheStatusIndicator } from './CacheStatusIndicator';
+import { useEmailMutations } from '../../hooks/email/useEmailMutations';
+import { useEmailSelection } from '../../hooks/email/useEmailSelection';
 import {
   downloadAttachment,
   filterEmailsBySearchTerm,
   createDefaultComposeDraft,
-} from '../../../utils/emailUtils';
-import { EMAILS_PER_PAGE } from '../../../constants/constants.email';
+} from '../../utils/emailUtils';
+import { EMAILS_PER_PAGE } from '../../constants/constants.email';
 
 type ComposeDraft = {
   to: string;
@@ -42,7 +42,7 @@ type ComposeDraft = {
   forwardEmailId?: string;
 };
 
-export function TraditionalInboxView({
+export function InboxView({
   mailboxId,
   emailSearchTerm = '',
 }: {
