@@ -1,5 +1,5 @@
-import { useEffect, useState, useRef } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useEffect, useState, useRef, useCallback } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { gmailCached } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { searchKanban, semanticSearchKanban } from '@/lib/api/kanban.api';
@@ -14,6 +14,15 @@ import { InboxHeader } from '../components/inbox/kanban/InboxHeader';
 import { getGmailUrl } from '@/utils/emailUtils';
 import { useKeyboardNavigation } from '@/hooks/useKeyboardNavigation';
 import { KeyboardShortcutsHelp } from '@/components/inbox/KeyboardShortcutsHelp';
+import {
+  useGmailPush,
+  startGmailWatch,
+  type GmailNotification,
+} from '@/hooks/email/useGmailPush';
+import {
+  invalidateAllEmailListsForMailbox,
+  invalidateMailboxes,
+} from '@/lib/db/emailCache';
 
 /**
  * InboxPage - Main inbox container with dual view modes
@@ -25,6 +34,8 @@ import { KeyboardShortcutsHelp } from '@/components/inbox/KeyboardShortcutsHelp'
  * - User profile dropdown with logout
  * - Auto-select first mailbox on load
  * - Fuzzy and semantic search for kanban mode
+ * - Real-time updates via Gmail Push (WebSocket)
+ * - Offline caching with IndexedDB
  *
  * Architecture:
  * - Traditional mode: 3-column layout (mailboxes, email list, email detail)
@@ -32,6 +43,7 @@ import { KeyboardShortcutsHelp } from '@/components/inbox/KeyboardShortcutsHelp'
  */
 export default function InboxPage() {
   const { user, logout } = useAuth();
+  const queryClient = useQueryClient();
 
   // View mode and mailbox selection (persisted in localStorage)
   const [mode, setMode] = useState<InboxMode>(() => {
@@ -52,6 +64,63 @@ export default function InboxPage() {
 
   // Email filtering (for traditional mode)
   const [emailSearchTerm, setEmailSearchTerm] = useState('');
+
+  /**
+   * Handle Gmail push notification - invalidate caches and trigger refresh
+   * IMPORTANT: Must invalidate IndexedDB cache BEFORE React Query
+   * to ensure fresh data is fetched from server
+   */
+  const handleGmailNotification = useCallback(
+    async (notification: GmailNotification) => {
+      console.log('🔔 Gmail notification received:', notification);
+
+      // ALWAYS invalidate cache when receiving any Gmail notification
+      // Gmail Push can notify about various changes, and we want to stay in sync
+
+      // STEP 1: Invalidate IndexedDB cache FIRST
+      // This ensures the cached API will fetch fresh data from server
+      await Promise.all([
+        invalidateAllEmailListsForMailbox(),
+        invalidateMailboxes(),
+      ]);
+      console.log('✅ IndexedDB cache invalidated for real-time update');
+
+      // STEP 2: Now invalidate React Query to trigger refetch
+      // Since IndexedDB is now empty, it will fetch from server
+      queryClient.invalidateQueries({ queryKey: ['emails'] });
+      queryClient.invalidateQueries({ queryKey: ['mailboxes'] });
+      queryClient.invalidateQueries({ queryKey: ['kanban-emails'] });
+
+      console.log('✅ React Query invalidated, UI will refresh');
+    },
+    [queryClient]
+  );
+
+  // Gmail Push Notifications via WebSocket
+  useGmailPush({
+    onNotification: handleGmailNotification,
+    onConnect: () => {
+      console.log('Gmail Push connected');
+    },
+    onError: (error) => {
+      console.error('Gmail Push error:', error);
+    },
+  });
+
+  // Start Gmail watch on initial load (only once per session)
+  useEffect(() => {
+    const watchStarted = sessionStorage.getItem('gmailWatchStarted');
+    if (!watchStarted && user) {
+      startGmailWatch()
+        .then(() => {
+          sessionStorage.setItem('gmailWatchStarted', 'true');
+          console.log('Gmail watch started successfully');
+        })
+        .catch((err) => {
+          console.error('Failed to start Gmail watch:', err);
+        });
+    }
+  }, [user]);
 
   // Keyboard shortcuts state
   const [showKeyboardHelp, setShowKeyboardHelp] = useState(false);
