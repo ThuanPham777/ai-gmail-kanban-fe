@@ -7,16 +7,15 @@ import { SearchResults } from '@/components/kanban/SearchResults';
 import { KanbanInboxView } from '@/components/kanban/KanbanInboxView';
 import { KanbanHeader } from '@/components/kanban/KanbanHeader';
 import { getGmailUrl } from '@/utils/emailUtils';
-import { useKeyboardNavigation } from '@/hooks/useKeyboardNavigation';
 import {
   useGmailPush,
-  startGmailWatch,
   type GmailNotification,
 } from '@/hooks/email/useGmailPush';
 import {
   invalidateAllEmailListsForMailbox,
   invalidateMailboxes,
 } from '@/lib/db/emailCache';
+import { startGmailWatch } from '@/lib/api';
 
 /**
  * KanbanPage - Kanban board view for emails
@@ -125,24 +124,6 @@ export default function KanbanPage() {
     queryKey: ['kanban-columns'],
     queryFn: getKanbanColumns,
     staleTime: 60_000,
-  });
-
-  /**
-   * Global keyboard shortcuts
-   */
-  useKeyboardNavigation({
-    handlers: {
-      FOCUS_SEARCH: () => {
-        searchInputRef.current?.focus();
-      },
-      CLOSE_MODAL: () => {
-        if (searchResults !== null) {
-          setSearchResults(null);
-          setSearchError(null);
-          setSearchQuery('');
-        }
-      },
-    },
   });
 
   return (

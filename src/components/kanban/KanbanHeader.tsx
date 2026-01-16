@@ -21,7 +21,7 @@ interface KanbanHeaderProps {
  * - Mailbox branding
  * - Smart search bar with suggestions
  * - Keyboard shortcuts help button
- * - Navigation toggle (Classic/Kanban)
+ * - Navigation toggle (Inbox/Kanban)
  * - User info and logout
  */
 export function KanbanHeader({
