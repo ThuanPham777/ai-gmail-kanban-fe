@@ -28,7 +28,7 @@ import { KanbanCardPreview } from './KanbanCardPreview';
 import {
   DEFAULT_KANBAN_STATUSES,
   type EmailStatus,
-} from '../../../constants/constants.kanban';
+} from '../../constants/constants.kanban';
 import type { KanbanColumn as KanbanColumnConfig } from '@/types/kanban-config.types';
 
 /**

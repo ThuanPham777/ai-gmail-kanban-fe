@@ -160,3 +160,32 @@ export const getAttachment = async (
   });
   return response.data;
 };
+
+// ============================================
+// Gmail Watch (Push Notifications) API
+// ============================================
+
+export interface GmailWatchResponse {
+  historyId: string;
+  expiration: string;
+}
+
+/**
+ * Starts Gmail push notifications watch
+ * Sets up Google Pub/Sub to receive real-time email updates
+ * @returns Watch response with historyId and expiration timestamp
+ */
+export const startGmailWatch = async (): Promise<GmailWatchResponse> => {
+  const response = await apiClient.post<{ data: GmailWatchResponse }>(
+    '/api/gmail/watch/start'
+  );
+  return response.data.data;
+};
+
+/**
+ * Stops Gmail push notifications watch
+ * Unsubscribes from Google Pub/Sub notifications
+ */
+export const stopGmailWatch = async (): Promise<void> => {
+  await apiClient.post('/api/gmail/watch/stop');
+};

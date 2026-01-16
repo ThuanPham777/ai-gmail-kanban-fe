@@ -6,6 +6,7 @@ import Login from './pages/Login';
 import SignUp from './pages/SignUp';
 import { Loader2 } from 'lucide-react';
 import InboxPage from './pages/InboxPage';
+import KanbanPage from './pages/KanbanPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -71,6 +72,10 @@ function App() {
             <Route
               path='/inbox'
               element={<ProtectedRoute element={<InboxPage />} />}
+            />
+            <Route
+              path='/kanban'
+              element={<ProtectedRoute element={<KanbanPage />} />}
             />
             <Route
               path='*'

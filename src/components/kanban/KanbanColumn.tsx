@@ -17,7 +17,7 @@ import {
   SortableContext,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
-import type { EmailStatus } from '../../../constants/constants.kanban';
+import type { EmailStatus } from '../../constants/constants.kanban';
 
 /**
  * Kanban column component

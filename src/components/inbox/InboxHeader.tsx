@@ -1,4 +1,5 @@
 import { type RefObject } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -6,19 +7,12 @@ import {
   TooltipTrigger,
   TooltipContent,
 } from '@/components/ui/tooltip';
-import { SearchBarWithSuggestions } from '../SearchBarWithSuggestions';
-import { ModeToggle, type InboxMode } from '../mode-toggle';
 import { Menu } from 'lucide-react';
 
 interface InboxHeaderProps {
-  mode: InboxMode;
-  onModeChange: (mode: InboxMode) => void;
   searchInputRef: RefObject<HTMLInputElement | null>;
   emailSearchTerm: string;
   onEmailSearchTermChange: (value: string) => void;
-  searchQuery: string;
-  onSearchQueryChange: (value: string) => void;
-  onSearch: (query?: string, isSemanticSearch?: boolean) => void;
   onShowKeyboardHelp: () => void;
   onMobileMenuToggle?: () => void;
   userEmail?: string;
@@ -29,34 +23,34 @@ interface InboxHeaderProps {
 /**
  * InboxHeader Component
  *
- * Shared header for both Traditional and Kanban inbox views
+ * Header for Traditional inbox view
  * Contains:
  * - Mailbox branding
- * - Mode-specific search bar (simple Input or SearchBarWithSuggestions)
+ * - Simple search input
  * - Keyboard shortcuts help button
- * - View mode toggle
+ * - Navigation toggle (Classic/Kanban)
  * - User info and logout
  */
 export function InboxHeader({
-  mode,
-  onModeChange,
   searchInputRef,
   emailSearchTerm,
   onEmailSearchTermChange,
-  searchQuery,
-  onSearchQueryChange,
-  onSearch,
   onShowKeyboardHelp,
   onMobileMenuToggle,
   userEmail,
   userProvider,
   onLogout,
 }: InboxHeaderProps) {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const isKanban = location.pathname === '/kanban';
+
   return (
     <header className='border-b bg-card shrink-0 safe-area-inset-top'>
       <div className='flex items-center justify-between gap-2 sm:gap-4 px-2 sm:px-4 py-3 sm:py-4'>
         {/* Mobile menu button - only visible on mobile/tablet */}
-        {mode === 'traditional' && onMobileMenuToggle && (
+        {onMobileMenuToggle && (
           <Button
             variant='ghost'
             size='sm'
@@ -81,24 +75,14 @@ export function InboxHeader({
         </div>
 
         <div className='flex-1 px-2 sm:px-4 max-w-2xl'>
-          {mode === 'traditional' ? (
-            <Input
-              ref={searchInputRef}
-              type='search'
-              placeholder='Search...'
-              className='w-full text-sm'
-              value={emailSearchTerm}
-              onChange={(e) => onEmailSearchTermChange(e.target.value)}
-            />
-          ) : (
-            <SearchBarWithSuggestions
-              inputRef={searchInputRef}
-              value={searchQuery}
-              onChange={onSearchQueryChange}
-              onSearch={onSearch}
-              placeholder='Search...'
-            />
-          )}
+          <Input
+            ref={searchInputRef}
+            type='search'
+            placeholder='Search...'
+            className='w-full text-sm'
+            value={emailSearchTerm}
+            onChange={(e) => onEmailSearchTermChange(e.target.value)}
+          />
         </div>
 
         <div className='flex items-center gap-1 sm:gap-3'>
@@ -121,10 +105,25 @@ export function InboxHeader({
               Keyboard shortcuts (Press ?)
             </TooltipContent>
           </Tooltip>
-          <ModeToggle
-            mode={mode}
-            onChange={onModeChange}
-          />
+
+          {/* Navigation Toggle */}
+          <div className='flex items-center gap-2'>
+            <Button
+              variant={!isKanban ? 'default' : 'outline'}
+              size='sm'
+              onClick={() => navigate('/inbox')}
+            >
+              Inbox
+            </Button>
+            <Button
+              variant={isKanban ? 'default' : 'outline'}
+              size='sm'
+              onClick={() => navigate('/kanban')}
+            >
+              Kanban
+            </Button>
+          </div>
+
           <div className='text-right hidden lg:block'>
             <p className='text-sm font-medium'>{userEmail}</p>
             <p className='text-xs text-muted-foreground'>

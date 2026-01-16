@@ -1,74 +1,86 @@
-# React Email Client And AI-powered Kanban Frontend
+# React Email Client & AI-Powered Kanban - Frontend
 
-Modern React single-page application featuring intelligent email management with AI-powered Kanban board, real-time Gmail integration, and seamless authentication flows.
+Modern React single-page application featuring intelligent email management with AI-powered Kanban board, real-time Gmail integration, offline caching, and seamless authentication.
 
-## Highlights
+## 🚀 Features
 
-### Authentication & Security (Google OAuth 2.0 Only)
+### Authentication & Security
 
-- **Google OAuth 2.0 code flow** - Single sign-in method for both login and registration
-- **Gmail API scopes** - Automatic permission request for email read/modify/send
-- **Offline refresh token** - Secure server-side storage for Gmail API access
-- **JWT access/refresh token rotation** - Secure session management with token rotation
-- **Hashed refresh tokens** - Server-side refresh tokens stored with bcrypt hashing
-- **Automatic token refresh** - Transparent token renewal when access token expires
-- **Concurrency handling** - Single refresh request when multiple 401s occur
-- **Cross-tab sync** - BroadcastChannel for instant auth state synchronization
-- **Secure logout** - Complete cleanup of all tokens (server + client side)
+- **Google OAuth 2.0 Code Flow** - Secure sign-in with Gmail scope permissions
+- **JWT Token Management** - Access token in-memory, refresh token in localStorage
+- **Automatic Token Refresh** - Seamless renewal with request queuing
+- **Cross-Tab Sync** - BroadcastChannel for instant logout synchronization
+- **Session Persistence** - Automatic session restoration on page reload
 
 ### Email Management
 
-- Gmail integration with real-time inbox sync
-- Offline caching with IndexedDB (stale-while-revalidate) for faster loads and basic offline access
-- Full email operations (compose, reply, forward, delete)
-- Rich text editor for composing emails
-- Attachment preview and download
-- Advanced filtering (unread, starred, attachments)
+- **Gmail Integration** - Real-time inbox sync with all labels
+- **Offline Caching** - IndexedDB with stale-while-revalidate pattern
+- **Full Email Operations** - Compose, reply, forward, delete
+- **Attachment Support** - Preview and download with proper metadata
+- **HTML Email Rendering** - Safe iframe sandbox with inline images
 
 ### AI-Powered Kanban Board
 
-- Drag-and-drop email organization with smooth animations (@dnd-kit)
-- Dynamic column configuration with user-customizable labels
-- AI-powered email summarization for quick insights
-- Smart snooze with calendar picker
-- Gmail label sync on card moves
-- Real-time updates with optimistic UI
-- Infinite scroll with automatic loading
-- Advanced filters: sender, unread, attachments, date sorting
+- **Drag-and-Drop** - Smooth animations with @dnd-kit
+- **Dynamic Columns** - Create, rename, delete, reorder columns
+- **Gmail Label Mapping** - Auto-sync labels when moving cards
+- **AI Summarization** - One-click email summaries
+- **Smart Snooze** - Hide emails with presets (30m, 1h, Tomorrow, Next week)
+- **Infinite Scroll** - Lazy loading with automatic pagination
+- **Optimistic Updates** - Instant UI feedback
 
 ### Search & Discovery
 
-- Instant fuzzy search with keyboard shortcuts
-- Semantic search with AI-powered relevance
-- Search suggestions with contact autocomplete
+- **Fuzzy Search** - Typo-tolerant instant search
+- **Semantic Search** - AI-powered conceptual relevance (Ctrl+Enter)
+- **Auto-Suggestions** - Contact names and keyword hints
+- **Search Results View** - Dedicated results with column indicators
+
+### Filtering & Sorting
+
+- **Sort by Date** - Newest first / Oldest first
+- **Filter by Unread** - Show only unread emails
+- **Filter by Attachments** - Show emails with attachments
+- **Sender Filter** - Quick filter by sender name/email
+- **Real-Time Updates** - Instant filter application
 
 ### User Experience
 
-- Responsive design (desktop, tablet, mobile)
-- Independent per-column scrolling (mailboxes, list, detail)
-- Mobile mailbox drawer navigation
-- Keyboard navigation and shortcuts
-- Dark/light mode support
-- Toast notifications for all actions
-- Loading states and error handling
+- **Responsive Design** - Desktop, tablet, mobile optimized
+- **Keyboard Navigation** - Full shortcut support (J/K, Enter, Escape, /)
+- **Dark/Light Mode** - System preference detection
+- **Toast Notifications** - Action feedback
+- **Loading States** - Skeleton loaders and spinners
+- **Error Handling** - Graceful error messages
 
-### Reliability & Rendering
+### Advanced Features
 
-- Infinite scroll with guarded auto-loading (prevents runaway fetch loops)
-- Email HTML is sanitized and rendered inside a sandboxed iframe (scripts are blocked by design)
+- **Gmail Push Notifications** - WebSocket real-time updates
+- **Multi-Tab Logout Sync** - BroadcastChannel coordination
+- **Offline Support** - IndexedDB caching for faster loads
+- **Open in Gmail** - Quick link to view in Gmail
 
-## Tech Stack
+## 🛠 Tech Stack
 
-- **Framework**: React 19, TypeScript 5, Vite 7
-- **Routing**: React Router 7 with protected routes
-- **State Management**: React Query 5 (TanStack Query)
-- **UI/Styling**: Tailwind CSS 4, shadcn/ui components
-- **Drag & Drop**: @dnd-kit/core
-- **Forms**: React Hook Form + Zod validation
-- **HTTP Client**: Axios with interceptors
-- **Icons**: Lucide React
+| Category         | Technologies                     |
+| ---------------- | -------------------------------- |
+| Framework        | React 19, TypeScript 5.7, Vite 6 |
+| Routing          | React Router 7                   |
+| State Management | TanStack Query 5 (React Query)   |
+| UI/Styling       | Tailwind CSS 4, shadcn/ui        |
+| Drag & Drop      | @dnd-kit/core, @dnd-kit/sortable |
+| HTTP Client      | Axios with interceptors          |
+| Offline Storage  | IndexedDB (idb)                  |
+| Real-time        | Socket.IO Client                 |
+| Icons            | Lucide React                     |
 
-## Getting Started
+## 📦 Getting Started
+
+### Prerequisites
+
+- Node.js 20.x or higher
+- Backend server running (see backend README)
 
 ### 1. Install Dependencies
 
@@ -83,8 +95,10 @@ Create `.env` file:
 
 ```env
 VITE_API_BASE_URL=http://localhost:3000
-VITE_GOOGLE_CLIENT_ID=your-google-client-id.apps.googleusercontent.com
+VITE_GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
 ```
+
+> Use the same `GOOGLE_CLIENT_ID` as the backend
 
 ### 3. Run Development Server
 
@@ -92,74 +106,247 @@ VITE_GOOGLE_CLIENT_ID=your-google-client-id.apps.googleusercontent.com
 npm run dev
 ```
 
-The frontend will start on `http://localhost:5173`
+App starts at `http://localhost:5173`
 
-> Use the exact same client ID as `GOOGLE_CLIENT_ID` on the backend. Add `http://localhost:5173` and your production origin to the OAuth client's “Authorized JavaScript origins”.
+## 📱 Pages & Routes
 
-### Useful Commands
+| Route     | Description            | Auth Required               |
+| --------- | ---------------------- | --------------------------- |
+| `/`       | Landing page           | No                          |
+| `/login`  | Google Sign-In         | No (redirects if logged in) |
+| `/signup` | Registration           | No (redirects if logged in) |
+| `/inbox`  | Traditional email view | Yes                         |
+| `/kanban` | Kanban board view      | Yes                         |
+
+## ⌨️ Keyboard Shortcuts
+
+| Shortcut     | Action                          |
+| ------------ | ------------------------------- |
+| `J` / `↓`    | Next email                      |
+| `K` / `↑`    | Previous email                  |
+| `Enter`      | Open selected email             |
+| `Escape`     | Close modal / Clear search      |
+| `/`          | Focus search bar                |
+| `Ctrl+Enter` | Semantic search (in search bar) |
+
+## 🔧 Scripts
 
 | Command           | Description                                |
 | ----------------- | ------------------------------------------ |
-| `npm run dev`     | Start dev server @ `http://localhost:5173` |
-| `npm run build`   | Type-check + production bundle             |
+| `npm run dev`     | Development server (http://localhost:5173) |
+| `npm run build`   | Production build                           |
 | `npm run preview` | Preview production build                   |
-| `npm run lint`    | ESLint                                     |
+| `npm run lint`    | ESLint check                               |
 
-## Pages
+## 🐳 Docker
 
-- `/` – Marketing/overview page that adapts to auth state.
-- `/signup` – Email/password registration (strong password rules, inline feedback).
-- `/login` – Email/password + Google Sign-In, loading & error messaging.
-- `/inbox` – Requires valid access token; renders folders, list, detail, mock actions, and compose modal.
+### Build Image
 
-## Working With Tokens
+```bash
+docker build \
+  --build-arg VITE_API_BASE_URL=https://api.example.com \
+  --build-arg VITE_GOOGLE_CLIENT_ID=your-client-id \
+  -t email-kanban-frontend .
+```
 
-- `src/lib/auth.ts` keeps access token in memory and handles refresh timers.
-- `src/lib/api.ts` attaches the access token to every request and queues up 401s so only one refresh call is executed even during bursts.
-- `AuthContext` refreshes on boot, syncs logout across tabs, and exposes `logout()` to the UI.
+### Run Container
 
-## Mock Email Experience
+```bash
+docker run -p 80:80 email-kanban-frontend
+```
 
-## API Endpoints
+## 📁 Project Structure
 
-### Authentication
+```
+src/
+├── components/
+│   ├── auth/           # Google Sign-In button
+│   ├── inbox/          # Traditional email view components
+│   │   ├── ComposeModal.tsx
+│   │   ├── EmailDetailColumn.tsx
+│   │   ├── EmailListColumn.tsx
+│   │   ├── InboxHeader.tsx
+│   │   ├── InboxView.tsx
+│   │   ├── KeyboardShortcutsHelp.tsx
+│   │   └── MailboxSidebar.tsx
+│   ├── kanban/         # Kanban board components
+│   │   ├── KanbanBoard.tsx       # Main drag-drop board
+│   │   ├── KanbanCard.tsx        # Email card component
+│   │   ├── KanbanColumn.tsx      # Droppable column
+│   │   ├── KanbanHeader.tsx      # Search + user menu
+│   │   ├── KanbanInboxView.tsx   # Board container
+│   │   ├── KanbanSettingsModal.tsx # Column configuration
+│   │   ├── SearchBarWithSuggestions.tsx
+│   │   ├── SearchResults.tsx
+│   │   └── SnoozePopover.tsx
+│   └── ui/             # shadcn/ui components
+├── config/
+│   └── env.ts          # Environment variables
+├── constants/          # App constants
+│   ├── constants.auth.ts
+│   ├── constants.email.ts
+│   ├── constants.gmail.ts
+│   └── constants.kanban.ts
+├── context/
+│   └── AuthContext.tsx # Auth state management
+├── hooks/
+│   ├── useKeyboardNavigation.ts
+│   ├── email/
+│   │   ├── useEmailMutations.ts
+│   │   ├── useEmailSelection.ts
+│   │   └── useGmailPush.ts     # WebSocket connection
+│   └── kanban/
+│       ├── useKanbanConfig.ts   # Column configuration
+│       ├── useKanbanFilters.ts  # Filter/sort state
+│       └── useKanbanMutations.ts # Board mutations
+├── lib/
+│   ├── auth.ts         # Token management
+│   ├── keyboardShortcuts.ts
+│   ├── utils.ts
+│   ├── api/            # API client & endpoints
+│   │   ├── client.ts   # Axios instance with interceptors
+│   │   ├── auth.api.ts
+│   │   ├── gmail.api.ts
+│   │   ├── gmail.cached.api.ts # Cached API calls
+│   │   ├── kanban.api.ts
+│   │   └── kanban-config.api.ts
+│   └── db/             # Offline storage
+│       ├── indexedDB.ts
+│       └── emailCache.ts
+├── pages/
+│   ├── Home.tsx
+│   ├── Login.tsx
+│   ├── SignUp.tsx
+│   ├── InboxPage.tsx
+│   └── KanbanPage.tsx
+├── types/              # TypeScript definitions
+└── utils/              # Utility functions
+    ├── authUtils.ts
+    ├── emailUtils.ts
+    ├── kanbanUtils.ts
+    └── mailboxUtils.ts
+```
 
-- `POST /api/auth/register` - Email/password signup
-- `POST /api/auth/login` - Issue access + refresh token
-- `POST /api/auth/google/full-login` - Google OAuth code flow (used for Gmail scopes + offline access)
-- `POST /api/auth/refresh` - Rotate refresh token
-- `POST /api/auth/logout` - Revoke stored refresh token
+## 🔄 State Management
 
-> Note: Some older setups may also expose `POST /api/auth/google` (One Tap credential exchange). The current backend implementation documents `google/full-login`.
+### Authentication (AuthContext)
 
-### Mailbox & Email
+```tsx
+const { user, bootstrapped, setUser, logout } = useAuth();
+```
 
-- `GET /api/mailboxes` - List folders + unread counts
-- `GET /api/mailboxes/:id/emails` - Paginated list for a folder (supports `pageToken` + `limit`, with `page` fallback)
-- `GET /api/emails/:id` - Email detail, metadata, attachments
-- `POST /api/emails/send` - Send email
-- `POST /api/emails/:id/reply` - Reply to an email
-- `POST /api/emails/:id/forward` - Forward an email
-- `POST /api/emails/:id/modify` - Modify email (mark read/unread, star, etc)
-- `GET /api/attachments/:id?emailId=...` - Download attachment
+- `user`: Current user object or null
+- `bootstrapped`: True when initial auth check complete
+- `setUser`: Update user state
+- `logout`: Clear all auth data
 
-### Kanban Board
+### Token Management (lib/auth.ts)
 
-- `GET /api/kanban/board` - Get kanban board data
-- `GET /api/kanban/search` - Fuzzy search emails
-- `POST /api/kanban/search/semantic` - Semantic vector search
-- `GET /api/kanban/search/suggestions` - Get search suggestions
-- `POST /api/kanban/items/:messageId/generate-embedding` - Generate embedding for email
-- `PATCH /api/kanban/items/:messageId/status` - Update email status
-- `POST /api/kanban/items/:messageId/snooze` - Snooze email until date
-- `POST /api/kanban/items/:messageId/summarize` - Generate AI summary
-- `GET /api/kanban/columns` - Get user's column configuration
-- `POST /api/kanban/columns` - Update column configuration
+- Access token stored in memory (never in localStorage)
+- Refresh token in localStorage for persistence
+- Automatic token refresh on 401 responses
+- Cross-tab sync via BroadcastChannel
 
-Responses include realistic sender names, previews, timestamps, HTML bodies, and attachment metadata so the UI feels like a live email client even without a real provider.
+### API Client (lib/api/client.ts)
 
-## Deployment Tips
+- Axios instance with auth interceptor
+- Request queuing during token refresh
+- Automatic retry after successful refresh
 
-- Build with Node 20.19+ or 22.12+ (Vite requirement).
-- Provide environment variables through your host (Vercel, Netlify, etc.).
-- Remember to update Google OAuth origins when you deploy to a new domain.
+## 📡 API Integration
+
+### Email Endpoints
+
+```typescript
+// List emails
+GET /api/mailboxes/:id/emails?pageToken=xxx&limit=20
+
+// Email detail
+GET /api/emails/:id
+
+// Send email
+POST /api/emails/send
+
+// Reply/Forward
+POST /api/emails/:id/reply
+POST /api/emails/:id/forward
+
+// Modify (read/unread/star/delete)
+POST /api/emails/:id/modify
+```
+
+### Kanban Endpoints
+
+```typescript
+// Get board
+GET /api/kanban/board?pageToken=xxx&limit=10
+
+// Update status (drag-drop)
+PATCH /api/kanban/items/:messageId/status
+
+// Snooze
+POST /api/kanban/items/:messageId/snooze
+
+// AI Summary
+POST /api/kanban/items/:messageId/summarize
+
+// Column config
+GET /api/kanban/columns
+POST /api/kanban/columns
+```
+
+### Search Endpoints
+
+```typescript
+// Fuzzy search
+GET /api/kanban/search?q=query&limit=50
+
+// Semantic search
+POST /api/kanban/search/semantic { query, limit }
+
+// Suggestions
+GET /api/kanban/search/suggestions?q=query&limit=5
+```
+
+## 🔐 Google OAuth Setup
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com)
+2. Create/select a project
+3. Enable Gmail API
+4. Create OAuth 2.0 Client ID (Web application)
+5. Add authorized JavaScript origins:
+   - `http://localhost:5173` (development)
+   - Your production domain
+6. Copy Client ID to `.env` as `VITE_GOOGLE_CLIENT_ID`
+
+## 🚀 Deployment
+
+### Vercel
+
+1. Connect GitHub repository
+2. Set environment variables in Vercel dashboard
+3. Deploy
+
+### Netlify
+
+1. Connect repository
+2. Build command: `npm run build`
+3. Publish directory: `dist`
+4. Set environment variables
+
+### Docker + Nginx
+
+The Dockerfile builds a production image with nginx:
+
+```bash
+docker build \
+  --build-arg VITE_API_BASE_URL=https://api.yourdomain.com \
+  --build-arg VITE_GOOGLE_CLIENT_ID=your-client-id \
+  -t email-kanban-fe .
+
+docker run -p 80:80 email-kanban-fe
+```
+
+## 📝 License
+
+MIT

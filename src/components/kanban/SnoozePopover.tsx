@@ -63,6 +63,7 @@ export function SnoozePopover({
     { label: '1h', ms: 60 * 60 * 1000, kind: 'relative' },
     { label: '3h', ms: 3 * 60 * 60 * 1000, kind: 'relative' },
     { label: 'Tomorrow 9AM', kind: 'tomorrow9' },
+    { label: 'Next week', kind: 'nextweek' },
   ] as const;
 
   type Preset = (typeof presets)[number];
@@ -73,6 +74,10 @@ export function SnoozePopover({
     if (p.kind === 'tomorrow9') {
       d = new Date();
       d.setDate(d.getDate() + 1);
+      d.setHours(9, 0, 0, 0);
+    } else if (p.kind === 'nextweek') {
+      d = new Date();
+      d.setDate(d.getDate() + 7);
       d.setHours(9, 0, 0, 0);
     } else {
       d = new Date(Date.now() + p.ms);
