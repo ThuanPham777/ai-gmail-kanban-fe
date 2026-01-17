@@ -105,30 +105,13 @@
 #     needs: sca
 #     uses: ./.github/workflows/build_and_push.yml
 #     with:
-#       service_name: 'exam-app-frontend'
+#       service_name: 'user-registration-system-fe'
 #       dockerfile_path: 'Dockerfile'
 #       context_path: './'
 #     secrets: 
 #       DOCKERHUB_USER: ${{ secrets.DOCKERHUB_USER }}
 #       DOCKERHUB_PASS: ${{ secrets.DOCKERHUB_PASS }}
 
-#   notify-n8n:
-#     needs: call_build_and_push
-#     runs-on: self-hosted
-
-#     steps:
-#       - name: Notify n8n via webhook
-#         env:
-#           REPO: ${{ github.repository }}
-#           REF: ${{ github.ref }}
-#           SHA: ${{ github.sha }}
-#           N8N_WEBHOOK: ${{ secrets.N8N_WEBHOOK }}
-#         run: |
-#           payload="{\"repository\":\"$REPO\",\"ref\":\"$REF\",\"commit\":\"$SHA\",\"status\":\"success\"}"
-#           curl -s -X POST "https://thien1234.app.n8n.cloud/webhook/github-build-event" \
-#             -H "Content-Type: application/json" \
-#             -H "X-N8N-WEBHOOK: $N8N_WEBHOOK" \
-#             -d "$payload" || true
 
 #   image-scan:
 #     needs: call_build_and_push
@@ -145,7 +128,7 @@
 #       run: snyk auth ${{ secrets.KEY_ACCESS_SNYK }}
 
 #     - name: Run Snyk Code Scan
-#       run: snyk container test --json ${{ secrets.DOCKERHUB_USER }}/exam-app-frontend:latest > image-snyk-report.json || true
+#       run: snyk container test --json ${{ secrets.DOCKERHUB_USER }}/user-registration-system-fe:latest > image-snyk-report.json || true
 
 #     - name: Convert Snyk Report to HTML
 #       run: cat image-snyk-report.json | snyk-to-html -o image-snyk-report.html || true
