@@ -35,7 +35,7 @@
 #         run: |
 
 #           docker run  -v $(pwd):/zap/wrk -t ghcr.io/zaproxy/zaproxy:stable zap-baseline.py \
-#             -t https://exam-app.lptdevops.website \
+#             -t https://user-registration-system.lptdevops.website \
 #             -r dast-zap-report.html \
 #             -J dast-zap-report.json || true
 
