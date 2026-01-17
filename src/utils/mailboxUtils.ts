@@ -13,26 +13,35 @@
  * @example
  * formatMailboxName('INBOX') => 'Inbox'
  * formatMailboxName('SENT') => 'Sent'
- * formatMailboxName('CATEGORY_PERSONAL') => 'Personal'
- * formatMailboxName('Label_123') => 'Label 123'
+ * formatMailboxName('CATEGORY_SOCIAL') => 'Social'
+ * formatMailboxName('CATEGORY_PROMOTIONS') => 'Promotions'
  * formatMailboxName('my-custom-label') => 'My Custom Label'
  */
 export function formatMailboxName(name: string): string {
   if (!name) return name;
 
-  // System labels mapping
+  // System labels mapping (Gmail-style)
   const systemLabels: Record<string, string> = {
     INBOX: 'Inbox',
     SENT: 'Sent',
-    DRAFT: 'Draft',
+    DRAFT: 'Drafts',
     TRASH: 'Trash',
     SPAM: 'Spam',
     STARRED: 'Starred',
     IMPORTANT: 'Important',
     UNREAD: 'Unread',
     CHAT: 'Chat',
-    SCHEDULED: 'Scheduled', // Gmail's "snoozed" label
+    SCHEDULED: 'Scheduled',
     SNOOZED: 'Snoozed',
+    ALL_MAIL: 'All Mail',
+    // Categories
+    CATEGORY_SOCIAL: 'Social',
+    CATEGORY_PROMOTIONS: 'Promotions',
+    CATEGORY_UPDATES: 'Updates',
+    CATEGORY_FORUMS: 'Forums',
+    CATEGORY_PURCHASES: 'Purchases',
+    CATEGORY_PRIMARY: 'Primary',
+    CATEGORY_SCHEDULED: 'Scheduled',
   };
 
   // Check if it's a system label
@@ -40,8 +49,12 @@ export function formatMailboxName(name: string): string {
   if (systemLabels[upperName]) {
     return systemLabels[upperName];
   }
+  // Also check exact match for CATEGORY_ labels
+  if (systemLabels[name]) {
+    return systemLabels[name];
+  }
 
-  // Handle CATEGORY_ labels (Gmail categories)
+  // Handle CATEGORY_ labels (Gmail categories) - fallback
   if (name.startsWith('CATEGORY_')) {
     const category = name.substring('CATEGORY_'.length);
     return category
@@ -71,26 +84,4 @@ export function formatMailboxName(name: string): string {
       return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
     })
     .join(' ');
-}
-
-/**
- * Gets icon/emoji for common mailbox types
- * @param name - Raw label name
- * @returns Icon string or null
- */
-export function getMailboxIcon(name: string): string | null {
-  const upperName = name.toUpperCase();
-  const icons: Record<string, string> = {
-    INBOX: '📥',
-    SENT: '📤',
-    DRAFT: '📝',
-    TRASH: '🗑️',
-    SPAM: '🚫',
-    STARRED: '⭐',
-    IMPORTANT: '❗',
-    SCHEDULED: '⏰',
-    SNOOZED: '⏰',
-  };
-
-  return icons[upperName] || null;
 }
