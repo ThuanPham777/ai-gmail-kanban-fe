@@ -6,10 +6,10 @@ import {
   CommandItem,
   CommandList,
 } from '@/components/ui/command';
-import { User, Search } from 'lucide-react';
+import { User, Search, Mail } from 'lucide-react';
 
 interface SearchSuggestion {
-  type: 'contact' | 'keyword';
+  type: 'contact' | 'keyword' | 'subject';
   text: string;
   value: string;
 }
@@ -125,15 +125,22 @@ export function SearchBarWithSuggestions({
                     className='cursor-pointer'
                   >
                     {suggestion.type === 'contact' ? (
-                      <User className='mr-2 h-4 w-4' />
+                      <User className='mr-2 h-4 w-4 text-blue-500' />
+                    ) : suggestion.type === 'subject' ? (
+                      <Mail className='mr-2 h-4 w-4 text-green-500' />
                     ) : (
-                      <Search className='mr-2 h-4 w-4' />
+                      <Search className='mr-2 h-4 w-4 text-amber-500' />
                     )}
-                    <div className='flex flex-col'>
-                      <span>{suggestion.text}</span>
+                    <div className='flex flex-col min-w-0 flex-1'>
+                      <span className='truncate'>{suggestion.text}</span>
                       {suggestion.type === 'contact' && (
-                        <span className='text-xs text-muted-foreground'>
+                        <span className='text-xs text-muted-foreground truncate'>
                           {suggestion.value}
+                        </span>
+                      )}
+                      {suggestion.type === 'subject' && (
+                        <span className='text-xs text-muted-foreground'>
+                          Email subject
                         </span>
                       )}
                     </div>

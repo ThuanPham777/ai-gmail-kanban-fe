@@ -135,13 +135,25 @@ export function SearchResults({
                               )}
                             </div>
 
-                            {it._score !== undefined && (
-                              <span className='text-xs bg-primary/10 text-primary px-2 py-0.5 rounded shrink-0'>
-                                {/* Fuzzy: lower score = better (invert), Semantic: higher score = better */}
+                            {it._score !== undefined && it._score !== null && (
+                              <span
+                                className={`text-xs px-2 py-0.5 rounded shrink-0 ${
+                                  it._searchType === 'semantic'
+                                    ? 'bg-primary/10 text-primary'
+                                    : 'bg-amber-500/10 text-amber-600'
+                                }`}
+                                title={
+                                  it._searchType === 'semantic'
+                                    ? 'AI semantic match'
+                                    : 'Keyword match'
+                                }
+                              >
+                                {/* Fuzzy: lower score = better (invert to show high % for good match) */}
+                                {/* Semantic: higher score = better (use directly) */}
                                 {Math.round(
-                                  ((it._searchType ?? searchType) === 'semantic'
-                                    ? it._score
-                                    : 1 - it._score) * 100
+                                  (it._searchType === 'fuzzy'
+                                    ? 1 - it._score
+                                    : it._score) * 100,
                                 )}
                                 % match
                               </span>
@@ -157,7 +169,7 @@ export function SearchResults({
                     <div className='text-right shrink-0'>
                       <p className='text-xs text-muted-foreground whitespace-nowrap'>
                         {new Date(
-                          it.createdAt ?? Date.now()
+                          it.createdAt ?? Date.now(),
                         ).toLocaleDateString()}
                       </p>
                       {it.status && (
@@ -177,7 +189,7 @@ export function SearchResults({
                       <p className='text-[10px] font-semibold text-muted-foreground'>
                         AI Summary
                       </p>
-                      <p className='text-xs leading-relaxed wrap-break-word overflow-wrap-anywhere'>
+                      <p className='text-xs leading-relaxed wrap-break-word overflow-wrap-anywhere whitespace-pre-line'>
                         {it.summary}
                       </p>
                     </div>
