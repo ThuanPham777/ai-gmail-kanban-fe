@@ -3,7 +3,7 @@ import type { StoredUser } from '../../auth';
 
 export interface LoginResponseData {
   accessToken: string;
-  refreshToken: string;
+  // refreshToken is now in HttpOnly cookie - not in response body
   user: StoredUser;
   provider: 'google';
   isNewUser?: boolean;
@@ -17,7 +17,7 @@ export interface LoginResponse {
 
 export interface RotateTokenResponseData {
   accessToken: string;
-  refreshToken: string;
+  // refreshToken is now in HttpOnly cookie - not in response body
 }
 
 export interface RotateTokenResponse {

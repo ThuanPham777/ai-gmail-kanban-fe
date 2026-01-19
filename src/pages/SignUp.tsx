@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { setAccessToken, persistRefreshInfo } from '@/lib/auth';
+import { setAccessToken, persistLoginInfo } from '@/lib/auth';
 import {
   Card,
   CardContent,
@@ -45,15 +45,12 @@ export default function SignUp() {
   const handleGoogleSuccess = (response: LoginResponse) => {
     setError('');
     // IMPORTANT: Set navigation flag FIRST before any state changes
-    // persistRefreshInfo triggers storage events that can sync user state
+    // persistLoginInfo triggers storage events that can sync user state
     // before this flag is set, causing navigation to be skipped
     shouldNavigateRef.current = true;
     setAccessToken(response.data.accessToken);
-    persistRefreshInfo(
-      response.data.user,
-      response.data.refreshToken,
-      response.data.accessToken
-    );
+    // Refresh token is now in HttpOnly cookie - only persist user info
+    persistLoginInfo(response.data.user, response.data.accessToken);
     setUser(response.data.user);
   };
 
