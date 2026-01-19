@@ -46,7 +46,7 @@ export function KanbanCardPreview({ item }: { item: KanbanEmailItem }) {
                 <p className='text-[10px] font-semibold text-muted-foreground'>
                   AI Summary
                 </p>
-                <p className='text-xs leading-relaxed wrap-break-word overflow-wrap-anywhere'>
+                <p className='text-xs leading-relaxed wrap-break-word overflow-wrap-anywhere whitespace-pre-line'>
                   {item.summary}
                 </p>
               </div>

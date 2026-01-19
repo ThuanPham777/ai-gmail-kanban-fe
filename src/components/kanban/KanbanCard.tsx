@@ -159,7 +159,7 @@ export function KanbanCard({
                 AI Summary
               </p>
             </div>
-            <p className='text-xs leading-relaxed wrap-break-word overflow-wrap-anywhere'>
+            <p className='text-xs leading-relaxed wrap-break-word overflow-wrap-anywhere whitespace-pre-line'>
               {item.summary}
             </p>
           </div>
