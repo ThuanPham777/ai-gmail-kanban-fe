@@ -40,12 +40,11 @@ export const GSI_SCRIPT_URL = 'https://accounts.google.com/gsi/client';
 
 /**
  * LocalStorage keys for auth data
+ * Note: Refresh token is now stored in HttpOnly cookie (server-side)
  */
 export const STORAGE_KEYS = {
   USER: 'user',
-  ACCESS_TOKEN: 'accessToken',
-  REFRESH_TOKEN: 'refreshToken',
-  REFRESH_EXPIRY: 'refreshTokenExpiry',
+  ACCESS_TOKEN: 'accessToken', // Access token is kept in-memory, not localStorage
 } as const;
 
 /**

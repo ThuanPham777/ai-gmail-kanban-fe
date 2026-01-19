@@ -2,7 +2,8 @@
  * AuthContext - Global authentication state management
  *
  * Features:
- * - Persistent authentication state (localStorage)
+ * - Persistent user info in localStorage (NOT refresh token)
+ * - Refresh token stored in HttpOnly cookie (server-side only)
  * - Auto token refresh on app start
  * - Cross-tab synchronization
  * - Logout with cleanup
@@ -24,7 +25,6 @@ import {
   initAuthWatchers,
   setAccessToken,
   setStoredUser,
-  touchRefreshWatcher,
   setupAuthBroadcastListener,
   type AuthBroadcastMessage,
 } from '@/lib/auth';
@@ -57,7 +57,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const queryClient = useQueryClient();
   // User state initialized from localStorage
   const [user, setUserState] = useState<StoredUser | null>(() =>
-    getStoredUser()
+    getStoredUser(),
   );
   // Bootstrap state tracks initial auth check completion
   const [bootstrapped, setBootstrapped] = useState(false);
@@ -79,21 +79,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     initAuthWatchers();
 
     /**
-     * Attempts to refresh access token using stored refresh token
+     * Attempts to refresh access token using HttpOnly cookie
      * Runs on app startup to restore session
+     * If user exists in localStorage, try to refresh the token
      */
     const attemptRefresh = async () => {
-      const storedRefresh = localStorage.getItem('refreshToken');
-      if (!storedRefresh) {
+      const storedUser = getStoredUser();
+      if (!storedUser) {
+        // No user stored - not logged in
         setBootstrapped(true);
         return;
       }
       try {
-        const response = await rotateTokens(storedRefresh);
+        // Refresh token is sent automatically via HttpOnly cookie
+        const response = await rotateTokens();
         setAccessToken(response.data.accessToken);
-        localStorage.setItem('refreshToken', response.data.refreshToken);
-        touchRefreshWatcher();
       } catch {
+        // Refresh failed - clear local auth state
         clearAllAuth();
         setUserState(null);
       } finally {
@@ -112,9 +114,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (event.key === 'user') {
         syncUserFromStorage();
       }
-      if (event.key === 'refreshToken') {
-        touchRefreshWatcher();
-      }
     };
 
     /**
@@ -132,7 +131,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         // Another tab logged in - sync user state AND access token
         setUserState(message.user);
         setAccessToken(message.accessToken);
-        touchRefreshWatcher();
       }
     };
 
@@ -190,7 +188,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setUser,
       logout,
     }),
-    [user, bootstrapped, setUser, logout]
+    [user, bootstrapped, setUser, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

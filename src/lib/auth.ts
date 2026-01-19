@@ -1,6 +1,5 @@
 let accessTokenMemory: string | null = null;
 let accessExpiryTimer: number | null = null;
-let refreshExpiryTimer: number | null = null;
 
 // BroadcastChannel for cross-tab auth sync (instant, more reliable than storage events)
 let authChannel: BroadcastChannel | null = null;
@@ -48,7 +47,7 @@ export function broadcastAuthChange(message: AuthBroadcastMessage) {
  * Set up listener for auth broadcasts from other tabs
  */
 export function setupAuthBroadcastListener(
-  onMessage: (message: AuthBroadcastMessage) => void
+  onMessage: (message: AuthBroadcastMessage) => void,
 ) {
   initBroadcastChannel();
   if (!authChannel) return () => {};
@@ -82,27 +81,11 @@ function clearTimer(timerId: number | null) {
 function scheduleAccessExpiryWatcher() {
   clearTimer(accessExpiryTimer);
   const accessExpMs = decodeJwtExp(accessTokenMemory);
-  const hasRefresh = Boolean(localStorage.getItem('refreshToken'));
   if (!accessExpMs) return;
   const delay = Math.max(0, accessExpMs - Date.now());
   accessExpiryTimer = window.setTimeout(() => {
-    if (!hasRefresh) {
-      clearAllAuth();
-      if (window.location.pathname !== '/login')
-        window.location.assign('/login');
-    }
-  }, delay);
-}
-
-function scheduleRefreshExpiryWatcher() {
-  clearTimer(refreshExpiryTimer);
-  const refreshToken = localStorage.getItem('refreshToken');
-  const refreshExpMs = decodeJwtExp(refreshToken);
-  if (!refreshExpMs) return;
-  const delay = Math.max(0, refreshExpMs - Date.now());
-  refreshExpiryTimer = window.setTimeout(() => {
-    clearAllAuth();
-    if (window.location.pathname !== '/login') window.location.assign('/login');
+    // Access token expired - the interceptor will try to refresh via cookie
+    // If refresh fails, the interceptor will clear auth and redirect to login
   }, delay);
 }
 
@@ -130,22 +113,15 @@ export const setStoredUser = (user: StoredUser | null) => {
   }
 };
 
-export const persistRefreshInfo = (
-  user: StoredUser,
-  refreshToken: string,
-  accessToken?: string
-) => {
+/**
+ * Persist user info after login
+ * Note: Refresh token is now stored in HttpOnly cookie (server-side)
+ */
+export const persistLoginInfo = (user: StoredUser, accessToken: string) => {
   setStoredUser(user);
-  localStorage.setItem('refreshToken', refreshToken);
-  scheduleRefreshExpiryWatcher();
+  setAccessToken(accessToken);
   // Broadcast login to other tabs (include access token so other tabs can sync)
-  if (accessToken) {
-    broadcastAuthChange({ type: 'login', user, accessToken });
-  }
-};
-
-export const touchRefreshWatcher = () => {
-  scheduleRefreshExpiryWatcher();
+  broadcastAuthChange({ type: 'login', user, accessToken });
 };
 
 /**
@@ -154,17 +130,15 @@ export const touchRefreshWatcher = () => {
  */
 export const clearLocalAuth = () => {
   accessTokenMemory = null;
-  localStorage.removeItem('refreshToken');
   localStorage.removeItem('user');
   clearTimer(accessExpiryTimer);
-  clearTimer(refreshExpiryTimer);
   accessExpiryTimer = null;
-  refreshExpiryTimer = null;
 };
 
 /**
  * Clear all auth data and broadcast logout to other tabs.
  * Use this when user initiates logout action.
+ * Note: HttpOnly cookie is cleared by the logout API endpoint
  */
 export const clearAllAuth = () => {
   clearLocalAuth();
@@ -174,6 +148,5 @@ export const clearAllAuth = () => {
 
 export const initAuthWatchers = () => {
   scheduleAccessExpiryWatcher();
-  scheduleRefreshExpiryWatcher();
   initBroadcastChannel();
 };

@@ -7,8 +7,8 @@ Modern React single-page application featuring intelligent email management with
 ### Authentication & Security
 
 - **Google OAuth 2.0 Code Flow** - Secure sign-in with Gmail scope permissions
-- **JWT Token Management** - Access token in-memory, refresh token in localStorage
-- **Automatic Token Refresh** - Seamless renewal with request queuing
+- **JWT Token Management** - Access token in-memory, refresh token in HttpOnly cookie (server-side)
+- **Automatic Token Refresh** - Seamless renewal with request queuing via secure cookies
 - **Cross-Tab Sync** - BroadcastChannel for instant logout synchronization
 - **Session Persistence** - Automatic session restoration on page reload
 
@@ -243,8 +243,8 @@ const { user, bootstrapped, setUser, logout } = useAuth();
 ### Token Management (lib/auth.ts)
 
 - Access token stored in memory (never in localStorage)
-- Refresh token in localStorage for persistence
-- Automatic token refresh on 401 responses
+- Refresh token stored in HttpOnly cookie (server-side only, XSS-safe)
+- Automatic token refresh on 401 responses via secure cookie
 - Cross-tab sync via BroadcastChannel
 
 ### API Client (lib/api/client.ts)

@@ -1,12 +1,7 @@
 // src/lib/api/client.ts
 import axios from 'axios';
 import { API_BASE_URL } from '@/config/env';
-import {
-  clearAllAuth,
-  getAccessToken,
-  setAccessToken,
-  touchRefreshWatcher,
-} from '../auth';
+import { clearAllAuth, getAccessToken, setAccessToken } from '../auth';
 import type { RotateTokenResponse } from './types/auth.types';
 
 const apiClient = axios.create({
@@ -14,6 +9,7 @@ const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true, // Required for HttpOnly cookies
 });
 
 let isRefreshing = false;
@@ -25,15 +21,12 @@ function onRefreshed(token: string) {
 }
 
 /**
- * Không import rotateTokens từ auth.api để tránh vòng lặp import.
- * Refresh gọi trực tiếp ở đây.
+ * Refresh tokens - refresh token is sent automatically via HttpOnly cookie
  */
-async function performTokenRefresh(refreshToken: string) {
+async function performTokenRefresh() {
   const response = await apiClient.post<RotateTokenResponse>(
     '/api/auth/refresh',
-    {
-      refreshToken,
-    }
+    {}, // No body needed - refresh token comes from cookie
   );
   return response.data;
 }
@@ -66,10 +59,7 @@ apiClient.interceptors.response.use(
     ) {
       originalRequest._retry = true;
 
-      const storedRefresh = localStorage.getItem('refreshToken');
-      if (!storedRefresh) return Promise.reject(error);
-
-      // Nếu đang refresh, xếp hàng
+      // If already refreshing, queue the request
       if (isRefreshing) {
         return new Promise((resolve) => {
           pendingRequests.push((token: string) => {
@@ -83,11 +73,10 @@ apiClient.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const response = await performTokenRefresh(storedRefresh);
+        const response = await performTokenRefresh();
 
         setAccessToken(response.data.accessToken);
-        localStorage.setItem('refreshToken', response.data.refreshToken);
-        touchRefreshWatcher();
+        // No need to store refresh token - it's in HttpOnly cookie
 
         onRefreshed(response.data.accessToken);
 
@@ -107,7 +96,7 @@ apiClient.interceptors.response.use(
     }
 
     return Promise.reject(error);
-  }
+  },
 );
 
 export default apiClient;
