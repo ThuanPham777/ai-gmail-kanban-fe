@@ -62,7 +62,11 @@ export function KanbanSettingsModal({
     text: string;
   } | null>(null);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [showEditSuggestions, setShowEditSuggestions] = useState(false);
   const [labelValidation, setLabelValidation] = useState<string | null>(null);
+  const [editLabelValidation, setEditLabelValidation] = useState<string | null>(
+    null,
+  );
 
   // Fetch available Gmail labels
   const { data: gmailLabels = [] } = useQuery<GmailLabel[]>({
@@ -74,10 +78,15 @@ export function KanbanSettingsModal({
 
   // Filter labels based on input
   const filteredLabels = gmailLabels.filter((label) =>
-    label.name.toLowerCase().includes(newGmailLabel.toLowerCase().trim())
+    label.name.toLowerCase().includes(newGmailLabel.toLowerCase().trim()),
   );
 
-  // Validate label on blur or when user stops typing
+  // Filter labels for edit mode
+  const filteredEditLabels = gmailLabels.filter((label) =>
+    label.name.toLowerCase().includes(editingLabel.toLowerCase().trim()),
+  );
+
+  // Validate label on blur or when user stops typing (Add mode)
   useEffect(() => {
     const timer = setTimeout(() => {
       if (newGmailLabel.trim()) {
@@ -87,11 +96,11 @@ export function KanbanSettingsModal({
         const duplicateLabel = columns.find(
           (col) =>
             col.gmailLabel &&
-            col.gmailLabel.toLowerCase() === trimmed.toLowerCase()
+            col.gmailLabel.toLowerCase() === trimmed.toLowerCase(),
         );
         if (duplicateLabel) {
           setLabelValidation(
-            `❌ Label "${trimmed}" is already used by column "${duplicateLabel.name}"`
+            `❌ Label "${trimmed}" is already used by column "${duplicateLabel.name}"`,
           );
           return;
         }
@@ -104,7 +113,7 @@ export function KanbanSettingsModal({
 
         // Check if label exists in Gmail
         const exactMatch = gmailLabels.find(
-          (l) => l.name.toLowerCase() === trimmed.toLowerCase()
+          (l) => l.name.toLowerCase() === trimmed.toLowerCase(),
         );
         if (exactMatch) {
           setLabelValidation(`✓ Label exists: ${exactMatch.name}`);
@@ -116,11 +125,11 @@ export function KanbanSettingsModal({
             setLabelValidation(
               `⚠️ Label not found. Did you mean: ${suggestions
                 .map((s) => s.name)
-                .join(', ')}?`
+                .join(', ')}?`,
             );
           } else {
             setLabelValidation(
-              `⚠️ Label "${newGmailLabel}" not found in Gmail. It will be used as-is.`
+              `⚠️ Label "${newGmailLabel}" not found in Gmail. It will be used as-is.`,
             );
           }
         }
@@ -132,6 +141,62 @@ export function KanbanSettingsModal({
     return () => clearTimeout(timer);
   }, [newGmailLabel, gmailLabels, columns]);
 
+  // Validate label on blur or when user stops typing (Edit mode)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (editingLabel.trim() && editingId) {
+        const trimmed = editingLabel.trim();
+
+        // Check for duplicate label in existing columns (exclude current column)
+        const duplicateLabel = columns.find(
+          (col) =>
+            col.id !== editingId &&
+            col.gmailLabel &&
+            col.gmailLabel.toLowerCase() === trimmed.toLowerCase(),
+        );
+        if (duplicateLabel) {
+          setEditLabelValidation(
+            `❌ Label "${trimmed}" is already used by column "${duplicateLabel.name}"`,
+          );
+          return;
+        }
+
+        // Check if it's a known system label (these always exist)
+        if (GMAIL_SYSTEM_LABELS.includes(trimmed.toUpperCase() as any)) {
+          setEditLabelValidation(`✓ System label: ${trimmed.toUpperCase()}`);
+          return;
+        }
+
+        // Check if label exists in Gmail
+        const exactMatch = gmailLabels.find(
+          (l) => l.name.toLowerCase() === trimmed.toLowerCase(),
+        );
+        if (exactMatch) {
+          setEditLabelValidation(`✓ Label exists: ${exactMatch.name}`);
+        } else {
+          const suggestions = gmailLabels
+            .filter((l) => l.name.toLowerCase().includes(trimmed.toLowerCase()))
+            .slice(0, 3);
+          if (suggestions.length > 0) {
+            setEditLabelValidation(
+              `⚠️ Label not found. Did you mean: ${suggestions
+                .map((s) => s.name)
+                .join(', ')}?`,
+            );
+          } else {
+            setEditLabelValidation(
+              `⚠️ Label "${editingLabel}" not found in Gmail. It will be used as-is.`,
+            );
+          }
+        }
+      } else {
+        setEditLabelValidation(null);
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [editingLabel, editingId, gmailLabels, columns]);
+
   const showMessage = (type: 'success' | 'error' | 'warning', text: string) => {
     setMessage({ type, text });
     setTimeout(() => setMessage(null), 3000);
@@ -142,12 +207,12 @@ export function KanbanSettingsModal({
 
     // Client-side validation: Check for duplicate name (case-insensitive)
     const duplicateName = columns.find(
-      (col) => col.name.toLowerCase() === newColumnName.trim().toLowerCase()
+      (col) => col.name.toLowerCase() === newColumnName.trim().toLowerCase(),
     );
     if (duplicateName) {
       showMessage(
         'error',
-        `Column name "${newColumnName.trim()}" is already used. Please choose a different name.`
+        `Column name "${newColumnName.trim()}" is already used. Please choose a different name.`,
       );
       return;
     }
@@ -157,14 +222,14 @@ export function KanbanSettingsModal({
       const duplicateLabel = columns.find(
         (col) =>
           col.gmailLabel &&
-          col.gmailLabel.toLowerCase() === newGmailLabel.trim().toLowerCase()
+          col.gmailLabel.toLowerCase() === newGmailLabel.trim().toLowerCase(),
       );
       if (duplicateLabel) {
         showMessage(
           'error',
           `Gmail label "${newGmailLabel.trim()}" is already used by column "${
             duplicateLabel.name
-          }". Each label can only be assigned to one column.`
+          }". Each label can only be assigned to one column.`,
         );
         return;
       }
@@ -174,7 +239,7 @@ export function KanbanSettingsModal({
     try {
       await onAddColumn(
         newColumnName.trim(),
-        newGmailLabel.trim() || undefined
+        newGmailLabel.trim() || undefined,
       );
       setNewColumnName('');
       setNewGmailLabel('');
@@ -221,6 +286,8 @@ export function KanbanSettingsModal({
     setEditingId(column.id);
     setEditingName(column.name);
     setEditingLabel(column.gmailLabel || '');
+    setEditLabelValidation(null);
+    setShowEditSuggestions(false);
   };
 
   const handleSaveEdit = async () => {
@@ -234,12 +301,12 @@ export function KanbanSettingsModal({
     const duplicateName = columns.find(
       (col) =>
         col.id !== editingId &&
-        col.name.toLowerCase() === editingName.trim().toLowerCase()
+        col.name.toLowerCase() === editingName.trim().toLowerCase(),
     );
     if (duplicateName) {
       showMessage(
         'error',
-        `Column name "${editingName.trim()}" is already used. Please choose a different name.`
+        `Column name "${editingName.trim()}" is already used. Please choose a different name.`,
       );
       return;
     }
@@ -250,14 +317,14 @@ export function KanbanSettingsModal({
         (col) =>
           col.id !== editingId &&
           col.gmailLabel &&
-          col.gmailLabel.toLowerCase() === editingLabel.trim().toLowerCase()
+          col.gmailLabel.toLowerCase() === editingLabel.trim().toLowerCase(),
       );
       if (duplicateLabel) {
         showMessage(
           'error',
           `Gmail label "${editingLabel.trim()}" is already used by column "${
             duplicateLabel.name
-          }". Each label can only be assigned to one column.`
+          }". Each label can only be assigned to one column.`,
         );
         return;
       }
@@ -283,6 +350,8 @@ export function KanbanSettingsModal({
     setEditingId(null);
     setEditingName('');
     setEditingLabel('');
+    setEditLabelValidation(null);
+    setShowEditSuggestions(false);
   };
 
   const handleDrop = async (e: React.DragEvent, dropIndex: number) => {
@@ -322,8 +391,8 @@ export function KanbanSettingsModal({
               message.type === 'error'
                 ? 'destructive'
                 : message.type === 'warning'
-                ? 'default'
-                : 'default'
+                  ? 'default'
+                  : 'default'
             }
           >
             {message.type === 'success' ? (
@@ -438,7 +507,7 @@ export function KanbanSettingsModal({
                 onClick={async () => {
                   if (
                     confirm(
-                      'Reset all columns to default settings? This will remove all custom columns.'
+                      'Reset all columns to default settings? This will remove all custom columns.',
                     )
                   ) {
                     try {
@@ -462,57 +531,110 @@ export function KanbanSettingsModal({
               {columns.map((column, index) => (
                 <div
                   key={column.id}
-                  draggable
+                  draggable={editingId !== column.id}
                   onDragStart={(e) => handleDragStart(e, index)}
                   onDragOver={handleDragOver}
                   onDrop={(e) => handleDrop(e, index)}
-                  className='flex items-center gap-2 p-3 border rounded-lg bg-card cursor-move hover:bg-accent/50 transition-colors'
+                  className={`p-3 border rounded-lg bg-card transition-colors ${
+                    editingId === column.id
+                      ? ''
+                      : 'cursor-move hover:bg-accent/50'
+                  }`}
                 >
-                  <GripVertical className='h-4 w-4 text-muted-foreground shrink-0' />
-
                   {editingId === column.id ? (
                     <>
-                      <Input
-                        value={editingName}
-                        onChange={(e) => setEditingName(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') handleSaveEdit();
-                          if (e.key === 'Escape') handleCancelEdit();
-                        }}
-                        className='flex-1'
-                        autoFocus
-                      />
-                      <Input
-                        value={editingLabel}
-                        onChange={(e) => setEditingLabel(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') handleSaveEdit();
-                          if (e.key === 'Escape') handleCancelEdit();
-                        }}
-                        placeholder='Gmail label (empty = archive)'
-                        title='System labels: INBOX, STARRED, IMPORTANT. Custom: label name. Empty: archives.'
-                        className='flex-1'
-                      />
-                      <Button
-                        size='sm'
-                        variant='ghost'
-                        onClick={handleSaveEdit}
-                        disabled={!editingName.trim()}
-                        title='Save (Enter)'
-                      >
-                        <CheckCircle2 className='h-4 w-4' />
-                      </Button>
-                      <Button
-                        size='sm'
-                        variant='ghost'
-                        onClick={handleCancelEdit}
-                        title='Cancel (Esc)'
-                      >
-                        <X className='h-4 w-4' />
-                      </Button>
+                      <div className='flex items-center gap-2'>
+                        <GripVertical className='h-4 w-4 text-muted-foreground shrink-0' />
+                        <Input
+                          value={editingName}
+                          onChange={(e) => setEditingName(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleSaveEdit();
+                            if (e.key === 'Escape') handleCancelEdit();
+                          }}
+                          className='flex-1'
+                          autoFocus
+                        />
+                        <div className='relative flex-1'>
+                          <Input
+                            value={editingLabel}
+                            onChange={(e) => {
+                              setEditingLabel(e.target.value);
+                              setShowEditSuggestions(true);
+                            }}
+                            onFocus={() => setShowEditSuggestions(true)}
+                            onBlur={() =>
+                              setTimeout(
+                                () => setShowEditSuggestions(false),
+                                200,
+                              )
+                            }
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') handleSaveEdit();
+                              if (e.key === 'Escape') handleCancelEdit();
+                            }}
+                            placeholder='Gmail label (empty = archive)'
+                            title='System labels: INBOX, STARRED, IMPORTANT. Custom: label name. Empty: archives.'
+                          />
+                          {/* Autocomplete dropdown for edit mode */}
+                          {showEditSuggestions &&
+                            editingLabel.trim() &&
+                            filteredEditLabels.length > 0 && (
+                              <div className='absolute z-50 w-full mt-1 bg-popover border rounded-md shadow-lg max-h-48 overflow-y-auto'>
+                                {filteredEditLabels
+                                  .slice(0, 10)
+                                  .map((label) => (
+                                    <div
+                                      key={label.id}
+                                      className='px-3 py-2 hover:bg-accent cursor-pointer text-sm'
+                                      onMouseDown={(e) => {
+                                        e.preventDefault();
+                                        setEditingLabel(label.name);
+                                        setShowEditSuggestions(false);
+                                      }}
+                                    >
+                                      <div className='font-medium'>
+                                        {label.name}
+                                      </div>
+                                      <div className='text-xs text-muted-foreground'>
+                                        {label.type === 'system'
+                                          ? 'System label'
+                                          : 'Custom label'}
+                                      </div>
+                                    </div>
+                                  ))}
+                              </div>
+                            )}
+                        </div>
+                        <Button
+                          size='sm'
+                          variant='ghost'
+                          onClick={handleSaveEdit}
+                          disabled={!editingName.trim()}
+                          title='Save (Enter)'
+                        >
+                          <CheckCircle2 className='h-4 w-4' />
+                        </Button>
+                        <Button
+                          size='sm'
+                          variant='ghost'
+                          onClick={handleCancelEdit}
+                          title='Cancel (Esc)'
+                        >
+                          <X className='h-4 w-4' />
+                        </Button>
+                      </div>
+                      {/* Edit mode validation message */}
+                      {editLabelValidation && (
+                        <p className='text-xs mt-1 ml-6 text-muted-foreground flex items-center gap-1'>
+                          <Info className='h-3 w-3' />
+                          {editLabelValidation}
+                        </p>
+                      )}
                     </>
                   ) : (
-                    <>
+                    <div className='flex items-center gap-2'>
+                      <GripVertical className='h-4 w-4 text-muted-foreground shrink-0' />
                       <div className='flex-1 min-w-0'>
                         <div className='font-medium text-sm truncate'>
                           {column.name}
@@ -540,7 +662,7 @@ export function KanbanSettingsModal({
                       >
                         <Trash2 className='h-4 w-4' />
                       </Button>
-                    </>
+                    </div>
                   )}
                 </div>
               ))}
