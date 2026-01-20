@@ -1,21 +1,21 @@
-import { useEffect, useState, useRef, useCallback } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { gmailCached, startGmailWatch } from '@/lib/api';
-import { useAuth } from '@/context/AuthContext';
-import { MailboxSidebar } from '../components/inbox/MailboxSidebar';
-import { MobileMenuDrawer } from '../components/inbox/MobileMenuDrawer';
-import { InboxView } from '../components/inbox/InboxView';
-import { useKeyboardNavigation } from '@/hooks/useKeyboardNavigation';
-import { KeyboardShortcutsHelp } from '@/components/inbox/KeyboardShortcutsHelp';
+import { useEffect, useState, useRef, useCallback } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { gmailCached, startGmailWatch } from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
+import { MailboxSidebar } from "../components/inbox/MailboxSidebar";
+import { MobileMenuDrawer } from "../components/inbox/MobileMenuDrawer";
+import { InboxView } from "../components/inbox/InboxView";
+import { useKeyboardNavigation } from "@/hooks/useKeyboardNavigation";
+import { KeyboardShortcutsHelp } from "@/components/inbox/KeyboardShortcutsHelp";
 import {
   useGmailPush,
   type GmailNotification,
-} from '@/hooks/email/useGmailPush';
+} from "@/hooks/email/useGmailPush";
 import {
   invalidateAllEmailListsForMailbox,
   invalidateMailboxes,
-} from '@/lib/db/emailCache';
-import { InboxHeader } from '@/components/inbox/InboxHeader';
+} from "@/lib/db/emailCache";
+import { InboxHeader } from "@/components/inbox/InboxHeader";
 
 /**
  * InboxPage - Traditional 3-column inbox view
@@ -40,7 +40,7 @@ export default function InboxPage() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Email filtering
-  const [emailSearchTerm, setEmailSearchTerm] = useState('');
+  const [emailSearchTerm, setEmailSearchTerm] = useState("");
 
   // Track newly arrived email IDs for highlighting
   const [newEmailIds, setNewEmailIds] = useState<Set<string>>(new Set());
@@ -52,11 +52,11 @@ export default function InboxPage() {
    */
   const handleGmailNotification = useCallback(
     async (notification: GmailNotification) => {
-      console.log('🔔 Gmail notification received:', notification);
+      console.log("🔔 Gmail notification received:", notification);
 
       // Extract new email IDs from the notification for highlighting
       const addedMessageIds = notification.changes
-        .filter((change) => change.type === 'messageAdded')
+        .filter((change) => change.type === "messageAdded")
         .map((change) => change.messageId);
 
       if (addedMessageIds.length > 0) {
@@ -65,7 +65,7 @@ export default function InboxPage() {
           addedMessageIds.forEach((id) => updated.add(id));
           return updated;
         });
-        console.log('🆕 New emails detected:', addedMessageIds);
+        console.log("🆕 New emails detected:", addedMessageIds);
       }
 
       // ALWAYS invalidate cache when receiving any Gmail notification
@@ -77,17 +77,17 @@ export default function InboxPage() {
         invalidateAllEmailListsForMailbox(),
         invalidateMailboxes(),
       ]);
-      console.log('✅ IndexedDB cache invalidated for real-time update');
+      console.log("✅ IndexedDB cache invalidated for real-time update");
 
       // STEP 2: Now invalidate React Query to trigger refetch
       // Since IndexedDB is now empty, it will fetch from server
-      queryClient.invalidateQueries({ queryKey: ['emails-infinite'] });
-      queryClient.invalidateQueries({ queryKey: ['emails-search'] });
-      queryClient.invalidateQueries({ queryKey: ['email'] });
-      queryClient.invalidateQueries({ queryKey: ['mailboxes'] });
-      queryClient.invalidateQueries({ queryKey: ['kanban-board'] });
+      queryClient.invalidateQueries({ queryKey: ["emails-infinite"] });
+      queryClient.invalidateQueries({ queryKey: ["emails-search"] });
+      queryClient.invalidateQueries({ queryKey: ["email"] });
+      queryClient.invalidateQueries({ queryKey: ["mailboxes"] });
+      queryClient.invalidateQueries({ queryKey: ["kanban-board"] });
 
-      console.log('✅ React Query invalidated, UI will refresh');
+      console.log("✅ React Query invalidated, UI will refresh");
     },
     [queryClient],
   );
@@ -96,24 +96,24 @@ export default function InboxPage() {
   useGmailPush({
     onNotification: handleGmailNotification,
     onConnect: () => {
-      console.log('Gmail Push connected');
+      console.log("Gmail Push connected");
     },
     onError: (error) => {
-      console.error('Gmail Push error:', error);
+      console.error("Gmail Push error:", error);
     },
   });
 
   // Start Gmail watch on initial load (only once per session)
   useEffect(() => {
-    const watchStarted = sessionStorage.getItem('gmailWatchStarted');
+    const watchStarted = sessionStorage.getItem("gmailWatchStarted");
     if (!watchStarted && user) {
       startGmailWatch()
         .then(() => {
-          sessionStorage.setItem('gmailWatchStarted', 'true');
-          console.log('Gmail watch started successfully');
+          sessionStorage.setItem("gmailWatchStarted", "true");
+          console.log("Gmail watch started successfully");
         })
         .catch((err) => {
-          console.error('Failed to start Gmail watch:', err);
+          console.error("Failed to start Gmail watch:", err);
         });
     }
   }, [user]);
@@ -124,7 +124,7 @@ export default function InboxPage() {
 
   // Fetch mailboxes (labels) from Gmail API with offline caching
   const mailboxesQuery = useQuery({
-    queryKey: ['mailboxes'],
+    queryKey: ["mailboxes"],
     queryFn: gmailCached.getMailboxes,
   });
 
@@ -158,7 +158,7 @@ export default function InboxPage() {
   });
 
   return (
-    <div className='h-screen flex flex-col bg-background text-foreground overflow-hidden min-h-screen-mobile'>
+    <div className="h-screen flex flex-col bg-background text-foreground overflow-hidden min-h-screen-mobile">
       <InboxHeader
         searchInputRef={searchInputRef}
         emailSearchTerm={emailSearchTerm}
@@ -168,27 +168,32 @@ export default function InboxPage() {
         userEmail={user?.email}
         userProvider={user?.provider}
         onLogout={logout}
+        unreadCount={
+          mailboxesQuery.data?.data.mailboxes.find(
+            (m) => m.id === selectedMailbox,
+          )?.unread
+        }
       />
 
-      <main className='flex-1 overflow-hidden min-h-0'>
-        <div className='h-full p-2 sm:p-4 flex flex-col min-h-0'>
-          <div className='grid gap-2 sm:gap-4 lg:grid-cols-[18%_82%] h-full min-h-0'>
+      <main className="flex-1 overflow-hidden min-h-0">
+        <div className="h-full p-2 sm:p-4 flex flex-col min-h-0">
+          <div className="grid gap-2 sm:gap-4 lg:grid-cols-[18%_82%] h-full min-h-0">
             {/* Desktop sidebar - hidden on mobile/tablet */}
-            <div className='hidden lg:block h-full min-h-0'>
+            <div className="hidden lg:block h-full min-h-0">
               <MailboxSidebar
                 mailboxes={mailboxesQuery.data?.data.mailboxes ?? []}
                 isLoading={mailboxesQuery.isLoading}
                 selectedId={selectedMailbox}
                 onSelect={setSelectedMailbox}
-                title='Mailboxes'
+                title="Mailboxes"
                 showCompose={false}
               />
             </div>
 
             {/* Email view - full width on mobile, constrained on desktop */}
-            <div className='rounded-xl border bg-card p-2 sm:p-4 overflow-hidden h-full min-h-0'>
+            <div className="rounded-xl border bg-card p-2 sm:p-4 overflow-hidden h-full min-h-0">
               {!selectedMailbox ? (
-                <div className='text-sm text-muted-foreground p-4'>
+                <div className="text-sm text-muted-foreground p-4">
                   Select a mailbox…
                 </div>
               ) : (

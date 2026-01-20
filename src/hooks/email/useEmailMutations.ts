@@ -108,10 +108,27 @@ export function useEmailMutations({
       // Cancel any outgoing refetches to prevent race conditions
       await qc.cancelQueries({ queryKey: ['emails-infinite', mailboxId] });
       await qc.cancelQueries({ queryKey: ['email', emailId] });
+      await qc.cancelQueries({ queryKey: ['mailboxes'] });
 
       // Snapshot current data for potential rollback
       const previousEmails = qc.getQueryData(['emails-infinite', mailboxId]);
       const previousEmail = qc.getQueryData(['email', emailId]);
+      const previousMailboxes = qc.getQueryData(['mailboxes']);
+
+      // Find the current email's unread status BEFORE updating
+      let currentEmailIsUnread = false;
+      if (previousEmails && typeof previousEmails === 'object' && 'pages' in previousEmails) {
+        const emailData = previousEmails as any;
+        if (emailData?.pages) {
+          for (const page of emailData.pages) {
+            const email = page.data.data.find((e: any) => e.id === emailId);
+            if (email) {
+              currentEmailIsUnread = email.unread ?? false;
+              break;
+            }
+          }
+        }
+      }
 
       // Update email list cache optimistically
       qc.setQueryData(['emails-infinite', mailboxId], (old: any) => {
@@ -173,7 +190,46 @@ export function useEmailMutations({
         };
       });
 
-      return { previousEmails, previousEmail };
+      // Update mailboxes cache optimistically (for unread count in header/sidebar)
+      // IMPORTANT: Only update count if email's unread status is actually changing
+      qc.setQueryData(['mailboxes'], (old: any) => {
+        if (!old?.data?.mailboxes) return old;
+
+        // Determine if we're changing the unread status
+        const isChangingToRead = actions.markRead;
+        const isChangingToUnread = actions.markUnread;
+
+        if (!isChangingToRead && !isChangingToUnread) return old;
+
+        return {
+          ...old,
+          data: {
+            ...old.data,
+            mailboxes: old.data.mailboxes.map((mailbox: any) => {
+              if (mailbox.id !== mailboxId) return mailbox;
+
+              const currentUnread = mailbox.unread ?? 0;
+              let newUnread = currentUnread;
+
+              // Only adjust count if the email's status is actually changing
+              if (isChangingToRead && currentEmailIsUnread) {
+                // Email is unread and we're marking it as read -> decrease count
+                newUnread = Math.max(0, currentUnread - 1);
+              } else if (isChangingToUnread && !currentEmailIsUnread) {
+                // Email is read and we're marking it as unread -> increase count
+                newUnread = currentUnread + 1;
+              }
+
+              return {
+                ...mailbox,
+                unread: newUnread,
+              };
+            }),
+          },
+        };
+      });
+
+      return { previousEmails, previousEmail, previousMailboxes };
     },
 
     // Rollback optimistic updates if API call fails
@@ -184,6 +240,9 @@ export function useEmailMutations({
       if (context?.previousEmail) {
         qc.setQueryData(['email', variables.emailId], context.previousEmail);
       }
+      if (context?.previousMailboxes) {
+        qc.setQueryData(['mailboxes'], context.previousMailboxes);
+      }
       onError?.('Failed to modify email');
     },
 
@@ -191,6 +250,8 @@ export function useEmailMutations({
     onSettled: (_data, _error, { emailId }) => {
       qc.invalidateQueries({ queryKey: ['emails-infinite', mailboxId] });
       qc.invalidateQueries({ queryKey: ['email', emailId] });
+      // Invalidate mailboxes to update unread count in sidebar/header
+      qc.invalidateQueries({ queryKey: ['mailboxes'] });
     },
   });
 
