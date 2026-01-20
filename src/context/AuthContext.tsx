@@ -94,11 +94,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         // Refresh token is sent automatically via HttpOnly cookie
         const response = await rotateTokens();
         setAccessToken(response.data.accessToken);
-      } catch {
+        // Keep user state as is - session restored successfully
+        if (mounted) setBootstrapped(true);
+      } catch (error) {
         // Refresh failed - clear local auth state
+        console.warn('Token refresh failed on startup:', error);
         clearAllAuth();
         setUserState(null);
-      } finally {
         if (mounted) setBootstrapped(true);
       }
     };
