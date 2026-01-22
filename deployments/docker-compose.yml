@@ -3,7 +3,7 @@ services:
     image: thuanpham777/ai-gmail-kanban-fe:latest
     container_name: ai-gmail-kanban-fe
     ports:
-      - "5173:80"
+      - "5173:8080"
     restart: always
     labels:
       - "traefik.http.routers.ai-gmail-kanban-fe-secure.rule=Host(`ai-gmail-kanban.lptdevops.website`)"
@@ -14,7 +14,7 @@ services:
       - "traefik.http.routers.ai-gmail-kanban-fe.rule=Host(`ai-gmail-kanban.lptdevops.website`)"
       - "traefik.http.routers.ai-gmail-kanban-fe.entrypoints=web"
       - "traefik.http.routers.ai-gmail-kanban-fe.middlewares=redirect-to-https"
-      - "traefik.http.services.ai-gmail-kanban-fe.loadbalancer.server.port=80"
+      - "traefik.http.services.ai-gmail-kanban-fe.loadbalancer.server.port=8080"
     networks:
       - PrviNetwork
 
